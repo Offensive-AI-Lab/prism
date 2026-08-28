@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.venv/
+
+# Secrets / local env
+.env
+
+# Run artifacts — never commit data, checkpoints, or logs
+checkpoints/
+*checkpoints*/
+exports/
+wandb/
+logs/
+*.log
+*.out
+*.pt
+*.safetensors
+*.jsonl
+*.xlsx
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store

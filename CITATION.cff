@@ -1,0 +1,40 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the PRISM paper."
+title: "PRISM training pipeline"
+type: software
+version: 1.0.0
+license: Apache-2.0
+repository-code: "https://github.com/Offensive-AI-Lab/prism"
+url: "https://arxiv.org/abs/2606.09563"
+authors:
+  - family-names: Gressel
+    given-names: Gilad
+  - family-names: Pankajakshan
+    given-names: Rahul
+  - family-names: Diament
+    given-names: Julia
+  - family-names: Hudis
+    given-names: Efim
+  - family-names: Achuthan
+    given-names: Krishnashree
+  - family-names: Mirsky
+    given-names: Yisroel
+preferred-citation:
+  type: conference-paper
+  title: "PRISM: Recovering Instruction Sets from Language Model Activations"
+  authors:
+    - family-names: Gressel
+      given-names: Gilad
+    - family-names: Pankajakshan
+      given-names: Rahul
+    - family-names: Diament
+      given-names: Julia
+    - family-names: Hudis
+      given-names: Efim
+    - family-names: Achuthan
+      given-names: Krishnashree
+    - family-names: Mirsky
+      given-names: Yisroel
+  collection-title: "Proceedings of the 2026 Conference on Empirical Methods in Natural Language Processing"
+  year: 2026
+  url: "https://arxiv.org/abs/2606.09563"
