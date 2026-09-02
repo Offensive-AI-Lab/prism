@@ -17,10 +17,10 @@ file back. The per-bullet lists, gt_instructions, itm_bullets, and
 sft_report are preserved unchanged.
 
 Run:
-    uv run python -m prism.calibration.rederive_rewards --in judge_scores.jsonl
-    uv run python -m prism.calibration.rederive_rewards \\
+    uv run python -m prism.rl.rederive_rewards --in judge_scores.jsonl
+    uv run python -m prism.rl.rederive_rewards \\
         --in judge_scores.jsonl --out judge_scores.new.jsonl
-    uv run python -m prism.calibration.rederive_rewards \\
+    uv run python -m prism.rl.rederive_rewards \\
         --in judge_scores.jsonl --w-inst 0.7 --w-halluc 0.3 --no-length-penalty
 """
 
