@@ -9,8 +9,11 @@ Launch (from the repository root):
     uv sync --extra demo
     uv run python demo/app.py            # http://127.0.0.1:7860
 
-Requirements: a CUDA GPU with ~24 GB of free memory (Qwen3.5-9B in bf16 plus
-two LoRA adapters). On first launch the released checkpoints
+Requirements: a CUDA GPU with ~24 GB of free memory — one Qwen3.5-9B in bf16
+carries every mode, including baseline comparison (LatentQA and Activation
+Oracles attach as extra LoRA adapters on the same instance when their PEFT
+adapter directories are present under PRISM_DEMO_BASELINES_DIR, default
+./checkpoints/baselines/{latentqa,ao}). On first launch the released checkpoints
 (prism-qwen3.5-9b-grpo.pt and prism-qwen3.5-9b-sft.pt, ~266 MB each) are
 downloaded from Hugging Face into --checkpoint-dir (default ./checkpoints)
 and verified against their SHA-256 digests; the Qwen3.5-9B base model is
@@ -25,6 +28,7 @@ import hashlib
 import json
 import logging
 import os
+import sys
 import threading
 import time
 from contextlib import asynccontextmanager
@@ -41,6 +45,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-8s %(me
 logger = logging.getLogger("prism.demo")
 
 ASSETS_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(ASSETS_DIR))
+
+import baselines as _baselines  # noqa: E402  (demo-local module)
 
 # =============================================================================
 # Released checkpoints (auto-downloaded, SHA-256 verified)
@@ -566,6 +573,8 @@ _runtime_lock = threading.Lock()
 _load_state: Dict[str, str] = {"status": "idle", "message": "Waiting to start..."}
 _load_state_lock = threading.Lock()
 _checkpoint_dir = Path(os.environ.get("PRISM_DEMO_CHECKPOINT_DIR", "checkpoints"))
+_baselines_dir = Path(os.environ.get("PRISM_DEMO_BASELINES_DIR", "checkpoints/baselines"))
+_baseline_manager: Optional["_baselines.BaselineManager"] = None
 
 
 def _set_state(status: str, message: str) -> None:
@@ -592,6 +601,8 @@ def _load_runtime():
             rt = PrismRuntime(paths)
             rt.load()
             _runtime = rt
+            global _baseline_manager
+            _baseline_manager = _baselines.BaselineManager(rt, _baselines_dir)
             _set_state("ready", "")
         except Exception as exc:
             logger.exception("Runtime load failed")
@@ -644,6 +655,18 @@ class BaseChatRequest(BaseModel):
     mode: str = ""
 
 
+class CompareRequest(BaseModel):
+    user_prompt: str
+    assistant_response: str
+    prism_prompt: str = ""
+    latentqa_prompt: str = ""
+    ao_prompt: str = ""
+    system_prompt: str = DEFAULT_SYSTEM_PROMPT
+    max_new_tokens: int = RETRIEVAL_MAX_NEW_TOKENS
+    max_act_tokens: Optional[int] = None
+    mode: str = ""  # which PRISM variant drives the PRISM column
+
+
 class RetrievalRequest(BaseModel):
     user_prompt: str
     assistant_response: str
@@ -678,7 +701,8 @@ async def health() -> Dict[str, str]:
 
 @web_app.get("/api/status")
 async def api_status() -> Dict[str, Any]:
-    return {**get_load_state(), "baselines": {"status": "idle", "message": ""}}
+    b = _baseline_manager.get_state() if _baseline_manager else {"status": "idle", "message": ""}
+    return {**get_load_state(), "baselines": b}
 
 
 @web_app.get("/api/config")
@@ -702,11 +726,24 @@ async def api_config() -> Dict[str, Any]:
         }
         for v in VARIANTS
     ]
+    compare_available = bool(
+        _baseline_manager.adapters_present() if _baseline_manager
+        else all((_baselines_dir / n / "adapter_config.json").exists() for n in ("latentqa", "ao"))
+    )
     return {
         "primary_variant": PRIMARY_KEY,
         "variants": variants,
-        "compare_available": False,
-        "baselines": [],
+        "compare_available": compare_available,
+        "baselines": [
+            {
+                "key": "prism",
+                "display_name": "PRISM",
+                "subtitle": "Soft-token decoder of the chosen PRISM variant.",
+                "default_question": RETRIEVAL_PLACEHOLDER.rstrip(".") + ".",
+            },
+            _baselines.LATENTQA_META,
+            _baselines.AO_META,
+        ] if compare_available else [],
         "retrieval_button_label": RETRIEVAL_BUTTON_LABEL,
         "retrieval_placeholder": RETRIEVAL_PLACEHOLDER,
         "show_retrieval_input": True,
@@ -849,6 +886,78 @@ async def api_retrieval_stream(req: RetrievalRequest):
         except Exception:
             logger.exception("Retrieval streaming failed")
             yield _sse_event({"type": "error", "detail": "Retrieval failed"})
+
+    return StreamingResponse(_stream(), media_type="text/event-stream")
+
+
+@web_app.post("/api/compare/stream")
+async def api_compare_stream(req: CompareRequest):
+    if not req.user_prompt.strip() or not req.assistant_response.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="user_prompt and assistant_response are required",
+        )
+    if _baseline_manager is None or not _baseline_manager.adapters_present():
+        raise HTTPException(status_code=400, detail="Baseline adapters are not installed")
+
+    variant_key = _resolve_variant_key(req.mode)
+    prism_rt = await asyncio.to_thread(get_runtime)
+    max_new = _clamped_retrieval_max(req.max_new_tokens)
+    max_act = _clamped_act(req.max_act_tokens)
+
+    async def _stream():
+        prism_started = time.time()
+        try:
+            gen = prism_rt.answer_retrieval_stream(
+                req.user_prompt, req.assistant_response, req.prism_prompt,
+                req.system_prompt, max_new, variant_key, max_act,
+            )
+            for event in gen:
+                event_out = {"baseline": "prism", **event}
+                if event["type"] == "done":
+                    event_out["latency_sec"] = round(time.time() - prism_started, 3)
+                    event_out["active_mode"] = variant_key
+                yield _sse_event(event_out)
+        except Exception:
+            logger.exception("PRISM column failed")
+            yield _sse_event({"baseline": "prism", "type": "error", "detail": "Generation failed"})
+
+        try:
+            yield _sse_event({
+                "baseline": "latentqa", "type": "status",
+                **_baseline_manager.get_state(),
+            })
+            await asyncio.to_thread(_baseline_manager.ensure_loaded)
+        except Exception:
+            logger.exception("Baseline load failed")
+            for b in ("latentqa", "ao"):
+                yield _sse_event({"baseline": b, "type": "error", "detail": "Baseline load failed"})
+            return
+
+        for key, stream_fn, question in (
+            ("latentqa", _baseline_manager.latentqa_stream, req.latentqa_prompt),
+            ("ao", _baseline_manager.ao_stream, req.ao_prompt),
+        ):
+            started = time.time()
+            try:
+                gen = stream_fn(req.user_prompt, req.assistant_response, question, max_new)
+                chunks = []
+                it = iter(gen)
+                while True:
+                    text = await asyncio.to_thread(next, it, None)
+                    if text is None:
+                        break
+                    chunks.append(text)
+                    yield _sse_event({"baseline": key, "type": "token", "text": text})
+                yield _sse_event({
+                    "baseline": key,
+                    "type": "done",
+                    "retrieval_response": "".join(chunks).strip(),
+                    "latency_sec": round(time.time() - started, 3),
+                })
+            except Exception:
+                logger.exception(f"{key} column failed")
+                yield _sse_event({"baseline": key, "type": "error", "detail": f"{key} failed"})
 
     return StreamingResponse(_stream(), media_type="text/event-stream")
 
