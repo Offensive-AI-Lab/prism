@@ -36,7 +36,7 @@ LoRA scope, and any chat-template adaptations. Also update the model-tag mapping
 in `scripts/export_checkpoint.py`.
 
 Document model-specific memory requirements or kernel dependencies in the
-profile and in `docs/KNOWN_ISSUES.md` when they affect reproducibility.
+profile.
 
 ## Changing the training data
 

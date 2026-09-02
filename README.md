@@ -188,13 +188,9 @@ attention implementation, update the corresponding profile and recipe helper.
   retained examples.
 - The recipes, rather than the dataclass defaults in the training modules,
   define the released runs.
-- The released runs trained from the precomputed activation cache. On-the-fly
-  extraction yields the same train/val split and, for gemma-2 and Ministral,
-  the same activations up to kernel-order noise; for Qwen3.5 it uses the
-  training-time model class rather than the extractor's, so it is not a
-  bit-for-bit reproduction path (see [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md)).
-- Several training-time behaviors are retained for checkpoint compatibility and
-  documented in [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md).
+- The released runs trained from the precomputed activation cache;
+  [docs/PIPELINE.md](docs/PIPELINE.md) describes how on-the-fly extraction
+  relates to it.
 - Do not use the released monitors for evaluation on IFEval-derived benchmarks;
   IFEval is one of the oracle-data sources.
 
@@ -209,7 +205,6 @@ attention implementation, update the corresponding profile and recipe helper.
 | [Judge calibration](docs/CALIBRATION.md) | Human-gold calibration workflow |
 | [Scoring rubric](docs/RUBRIC.md) | Coverage and hallucination rubric |
 | [Ablations](docs/ABLATIONS.md) | Training-side ablation commands |
-| [Known issues](docs/KNOWN_ISSUES.md) | Reproduction caveats and retained behaviors |
 
 ## Citation
 

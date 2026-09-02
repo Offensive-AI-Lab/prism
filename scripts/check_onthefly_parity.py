@@ -20,8 +20,7 @@ and fail only if --max-abs-tol / --min-cos are given and violated. Expect
 kernel-order noise (~1e-2 in bf16) for models whose extraction class equals
 the training class (gemma-2, Ministral); for Qwen3.5 the released cache was
 extracted with AutoModelForCausalLM while training uses
-AutoModelForImageTextToText (docs/KNOWN_ISSUES.md) — this script quantifies
-that gap.
+AutoModelForImageTextToText — this script quantifies that gap.
 """
 from __future__ import annotations
 

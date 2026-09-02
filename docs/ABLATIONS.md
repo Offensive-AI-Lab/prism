@@ -20,7 +20,7 @@ Protocol:
 - Reference: compare against the layer-16 run from this ablation rather than
   the layer-16 result printed in the paper. All ablation runs use the
   training-time model class, while the released precomputed activations used
-  the causal-LM class. See `docs/KNOWN_ISSUES.md`.
+  the causal-LM class.
 
 Run one layer per GPU:
 

@@ -67,16 +67,15 @@ response tokens.
   useful when changing hook layers during development. It differs from the
   cache path in training order (plain shuffle rather than shard-grouped
   shuffle) and validation order. For Qwen3.5, it also uses the training-time
-  model class rather than the extractor's model class. An on-the-fly Qwen run
-  is therefore not a bit-for-bit reproduction of the released run; see
-  `docs/KNOWN_ISSUES.md`.
+  model class rather than the extractor's model class, so cached and in-loop
+  activations differ slightly (`scripts/check_onthefly_parity.py` measures
+  the difference).
 
 `scripts/check_onthefly_parity.py --precomputed-dir <cache> --dataset-paths
 <the cache's JSONLs>` verifies the two paths against each other: identical
 split membership, identical decoder prefix, and the activation gap (max/mean
 |Δ|, cosine) for a sample of records. Split identity holds for caches built by
-this repository's extractor from the same files; see docs/KNOWN_ISSUES.md for
-the released cache.
+this repository's extractor from the same files.
 
 ## 3. SFT — `prism.sft.train`
 
@@ -129,3 +128,13 @@ adversarial suite, judges, baselines — lives entirely in prism-eval.
 The judge's rubric was calibrated against human gold annotations (κ-gated;
 see docs/CALIBRATION.md and docs/RUBRIC.md). The gold data ships with
 prism-eval; this repo carries the scoring/agreement tooling.
+
+## Environment notes
+
+- `transformers>=5.3,<6`: the Qwen3.5 profile patches
+  `Qwen3_5Model.compute_3d_position_ids`, and gemma-2 must load with
+  `attn_implementation="eager"` — sdpa silently drops the attention/logit
+  softcapping and produces wrong activations. Both are pinned in the
+  target-model profiles.
+- The trainers assume a single ~95 GB GPU (gradient checkpointing on, k3 KL);
+  see the memory notes in `src/prism/rl/config.py`.

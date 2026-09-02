@@ -35,9 +35,9 @@ inherit all of the above**; that is why this repo ships scripts only.
 `valid_record_ids.json` mask that every training loader applies. Activations
 are extracted per target model; the records are shared across target models.
 
-Known selection effects are documented in docs/KNOWN_ISSUES.md (target
-model = labeler; judge-filter mask gates train *and* eval; IFEval
-contamination for downstream IF benchmarks).
+Selection effects to be aware of: the target model is also the labeler; the
+judge-filter mask gates the train *and* eval splits; and IFEval is a training
+source, so do not evaluate these models on IFEval-derived benchmarks.
 
 ## Judge calibration gold data (not in this repo)
 
