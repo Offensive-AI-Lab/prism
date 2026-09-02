@@ -726,10 +726,7 @@ async def api_config() -> Dict[str, Any]:
         }
         for v in VARIANTS
     ]
-    compare_available = bool(
-        _baseline_manager.adapters_present() if _baseline_manager
-        else all((_baselines_dir / n / "adapter_config.json").exists() for n in ("latentqa", "ao"))
-    )
+    compare_available = os.environ.get("PRISM_DEMO_DISABLE_COMPARE", "0") != "1"
     return {
         "primary_variant": PRIMARY_KEY,
         "variants": variants,
@@ -897,8 +894,10 @@ async def api_compare_stream(req: CompareRequest):
             status_code=400,
             detail="user_prompt and assistant_response are required",
         )
-    if _baseline_manager is None or not _baseline_manager.adapters_present():
-        raise HTTPException(status_code=400, detail="Baseline adapters are not installed")
+    if os.environ.get("PRISM_DEMO_DISABLE_COMPARE", "0") == "1":
+        raise HTTPException(status_code=400, detail="Compare mode is disabled")
+    if _baseline_manager is None:
+        raise HTTPException(status_code=503, detail="Model is still loading")
 
     variant_key = _resolve_variant_key(req.mode)
     prism_rt = await asyncio.to_thread(get_runtime)

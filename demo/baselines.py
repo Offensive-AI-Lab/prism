@@ -7,8 +7,11 @@ passes with their own adapter selected. Nothing here loads a second copy of
 the base model.
 
 Adapter checkpoints are two PEFT directories (adapter_config.json +
-adapter_model.safetensors) expected under PRISM_DEMO_BASELINES_DIR
-(default ./checkpoints/baselines): latentqa/ and ao/.
+adapter_model.safetensors) under PRISM_DEMO_BASELINES_DIR (default
+./checkpoints/baselines): latentqa/ and ao/. Missing files are downloaded
+from Hugging Face on the first compare request (~580 MB total) and verified
+against their SHA-256 digests. Set PRISM_DEMO_DISABLE_COMPARE=1 to hide
+compare mode entirely.
 
 The `lit` (LatentQA) and `nl_probes` (Activation Oracles) packages are
 vendored under third_party/ — see the LICENSE files there.
@@ -16,8 +19,10 @@ vendored under third_party/ — see the LICENSE files there.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
+import os
 import shutil
 import sys
 import tempfile
@@ -31,6 +36,27 @@ import torch.nn as nn
 logger = logging.getLogger("prism.demo.baselines")
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "third_party"))
+
+WEIGHTS_ORG = os.environ.get("PRISM_DEMO_WEIGHTS_ORG", "Offensive-AI-Lab")
+
+# Prefiltered adapters published alongside the PRISM checkpoints. The LatentQA
+# adapter is the lm_head/embed-stripped variant (116 MB instead of 2.1 GB).
+BASELINE_ADAPTERS = {
+    "latentqa": {
+        "repo": "prism-baseline-latentqa-qwen3.5-9b",
+        "files": {
+            "adapter_config.json": "a952a74b6be55979834a491a7da2f1ddfff0f9ddc153116b692c6b6ab4a220a6",
+            "adapter_model.safetensors": "8600f3ba51e60e53de72ff044adee962dca3c179a9b8a1212809c236a7852cd2",
+        },
+    },
+    "ao": {
+        "repo": "prism-baseline-activation-oracles-qwen3.5-9b",
+        "files": {
+            "adapter_config.json": "b049c48d32dfbb25e605949b6859dbe2eb53bd680d36eb6171f82e97003306cc",
+            "adapter_model.safetensors": "1830598a70e652d4bf5a39de4439d7683e8e5825cc5c053b66cdcbbe187e1612",
+        },
+    },
+}
 
 LATENTQA_TAIL_TOKENS = 128
 AO_SEGMENT_TOKENS = 128
@@ -151,9 +177,38 @@ class BaselineManager:
 
     def adapters_present(self) -> bool:
         return all(
-            (self.baselines_dir / name / "adapter_config.json").exists()
-            for name in ("latentqa", "ao")
+            (self.baselines_dir / name / fname).exists()
+            for name, spec in BASELINE_ADAPTERS.items()
+            for fname in spec["files"]
         )
+
+    def _sha256_of(self, path: Path) -> str:
+        h = hashlib.sha256()
+        with path.open("rb") as fh:
+            for block in iter(lambda: fh.read(1 << 20), b""):
+                h.update(block)
+        return h.hexdigest()
+
+    def ensure_adapters(self) -> None:
+        """Download any missing adapter file and verify every digest."""
+        from huggingface_hub import hf_hub_download
+
+        for name, spec in BASELINE_ADAPTERS.items():
+            target_dir = self.baselines_dir / name
+            target_dir.mkdir(parents=True, exist_ok=True)
+            for fname, digest in spec["files"].items():
+                path = target_dir / fname
+                if not path.exists():
+                    repo_id = f"{WEIGHTS_ORG}/{spec['repo']}"
+                    logger.info(f"[{name}] downloading {repo_id}/{fname} → {path}")
+                    hf_hub_download(repo_id=repo_id, filename=fname, local_dir=str(target_dir))
+                got = self._sha256_of(path)
+                if got != digest:
+                    raise RuntimeError(
+                        f"{path} has SHA-256 {got}, expected {digest}. "
+                        f"Delete the file and retry to re-download."
+                    )
+            logger.info(f"[{name}] adapter verified under {target_dir}")
 
     def get_state(self) -> Dict[str, str]:
         return dict(self.state)
@@ -166,6 +221,10 @@ class BaselineManager:
                 self.state = {"status": "ready", "message": ""}
                 return
             try:
+                if not self.adapters_present():
+                    self.state = {"status": "loading",
+                                  "message": "Downloading baseline adapters (~580 MB on first use)..."}
+                self.ensure_adapters()
                 self.state = {"status": "loading",
                               "message": "Attaching LatentQA + Activation Oracle adapters (~30s)..."}
                 self._load()
@@ -182,12 +241,6 @@ class BaselineManager:
         from transformers import AutoTokenizer, PreTrainedModel
         from lit.configs.interpret_config import interpret_config
         from lit.reading import ForCausalLMLossPatched
-
-        if not self.adapters_present():
-            raise RuntimeError(
-                f"Baseline adapters not found under {self.baselines_dir} "
-                f"(expected latentqa/ and ao/ PEFT directories)."
-            )
 
         model = self.runtime.model
         model_id = self.runtime.train_cfgs[list(self.runtime.train_cfgs)[0]]["model_id"]
