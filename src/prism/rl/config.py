@@ -202,7 +202,7 @@ RL_CONFIG = {
     # no length penalty) — cleaner interpretation than the previous 0.6 cap.
     # Length-penalty λ bumped 0.10 → 0.15 to keep the bullet-inflation guard
     # roughly constant in proportion to the recall ceiling (was 0.10/0.60 ≈
-    # 17%, now 0.15/1.00 = 15%). Rerun prism.calibration.rederive_rewards
+    # 17%, now 0.15/1.00 = 15%). Rerun prism.rl.rederive_rewards
     # after changing these knobs to update existing judge_scores.jsonl in
     # place (no LLM calls needed).
     "instruction_weight": 1.0,

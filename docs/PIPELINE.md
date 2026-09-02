@@ -123,12 +123,6 @@ and emits `prism-{target}-{method}.pt` in the exact format
 (docs/CHECKPOINT_FORMAT.md). Evaluation itself — the 1000-record
 adversarial suite, judges, baselines — lives entirely in prism-eval.
 
-## Judge calibration — `prism.calibration`
-
-The judge's rubric was calibrated against human gold annotations (κ-gated;
-see docs/CALIBRATION.md and docs/RUBRIC.md). The gold data ships with
-prism-eval; this repo carries the scoring/agreement tooling.
-
 ## Environment notes
 
 - `transformers>=5.3,<6`: the Qwen3.5 profile patches

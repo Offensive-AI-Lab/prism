@@ -23,7 +23,6 @@ code, benchmark data, released checkpoints, and published results are in
 | SFT | `src/prism/sft/` |
 | GRPO | `src/prism/rl/` |
 | Reproduction recipes | `recipes/` |
-| Judge calibration utilities | `src/prism/calibration/` |
 
 The training data are generated locally and are not distributed in this
 repository. See [the data card](docs/DATA_CARD.md) before redistributing derived
@@ -64,7 +63,7 @@ PRISM_JUDGE_API_KEY=not-needed
 Values already present in the environment take precedence over `.env`.
 
 Optional dependency groups are `datagen` (local vLLM generation),
-`calibration`, `bertscore`, and `dev`. Install one with, for example,
+`bertscore`, and `dev`. Install one with, for example,
 `uv sync --extra datagen`.
 
 ## Training pipeline
@@ -202,7 +201,6 @@ attention implementation, update the corresponding profile and recipe helper.
 | [Released recipes](docs/RECIPES.md) | Hyperparameters and checkpoint provenance |
 | [Data card](docs/DATA_CARD.md) | Source datasets, generated labels, and licensing |
 | [Checkpoint format](docs/CHECKPOINT_FORMAT.md) | Training and release checkpoint schemas |
-| [Judge calibration](docs/CALIBRATION.md) | Human-gold calibration workflow |
 | [Scoring rubric](docs/RUBRIC.md) | Coverage and hallucination rubric |
 | [Ablations](docs/ABLATIONS.md) | Training-side ablation commands |
 

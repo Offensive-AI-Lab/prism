@@ -39,16 +39,6 @@ Selection effects to be aware of: the target model is also the labeler; the
 judge-filter mask gates the train *and* eval splits; and IFEval is a training
 source, so do not evaluate these models on IFEval-derived benchmarks.
 
-## Judge calibration gold data (not in this repo)
-
-The human gold sets used to calibrate the judge (coverage pilot: 49
-reports / 170 claims; hallucination-enriched: 19 reports / 118 claims;
-two annotators, adjudicated) ship with
-[prism-eval](https://github.com/Offensive-AI-Lab/prism-eval) under
-`data/calibration/` (JSONL form, e.g. `coverage_gold_v1.jsonl`,
-`advdet_gold_v1.jsonl`) alongside its own data card. `prism.calibration`
-consumes them via user-supplied paths.
-
 ## Judge rubric provenance
 
 The GRPO training reward used the rubric embedded in `prism/rl/judge.py`

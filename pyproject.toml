@@ -47,8 +47,6 @@ Evaluation = "https://github.com/Offensive-AI-Lab/prism-eval"
 # Oracle dataset generation with a local vLLM engine (the http_async backend
 # needs only core deps and any OpenAI-compatible server).
 datagen = ["vllm>=0.11.0"]
-# Judge-calibration analysis (kappa/ICC scoring against human gold data).
-calibration = ["pandas>=2.2.0", "openpyxl>=3.1.0", "scikit-learn>=1.5.0", "scipy>=1.14.0"]
 # Optional BERTScore validation metric in the SFT trainer (degrades gracefully).
 bertscore = ["bert-score>=0.3.13"]
 dev = ["pytest>=8.0.0"]
