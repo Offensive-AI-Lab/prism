@@ -1,0 +1,1480 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>PRISM: Activation-based Instruction Recovery</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;600&display=swap');
+    :root {
+      --bg-a: #f5f7ff;
+      --bg-b: #e8f4ea;
+      --ink: #1a2630;
+      --muted: #5f7281;
+      --left: #0f5a7a;
+      --mid: #f6b545;
+      --right: #1d7f52;
+      --panel: rgba(255,255,255,0.84);
+      --line: rgba(26,38,48,0.12);
+      --shadow: 0 16px 38px rgba(17, 44, 63, 0.14);
+      --highlight: #ffe58d;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'IBM Plex Sans', system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 15% 5%, #ffffff 0%, transparent 48%),
+        radial-gradient(circle at 88% 18%, #d7f6ea 0%, transparent 38%),
+        linear-gradient(120deg, var(--bg-a), var(--bg-b));
+      min-height: 100vh;
+    }
+    .wrap {
+      width: min(1400px, 95vw);
+      margin: 28px auto;
+    }
+    .top {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 18px;
+    }
+    .top-copy {
+      display: grid;
+      gap: 4px;
+    }
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    h1 {
+      margin: 0;
+      font: 700 34px/1.1 'Space Grotesk', sans-serif;
+      letter-spacing: -0.02em;
+    }
+    .sub { color: var(--muted); font-size: 14px; }
+    .mode-pill {
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.72);
+      font: 600 12px/1 'Space Grotesk', sans-serif;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr 1.1fr;
+      gap: 16px;
+    }
+    .card {
+      background: var(--panel);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      height: 82vh;
+      max-height: 82vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transform: translateY(8px);
+      opacity: 0;
+      animation: rise 420ms ease forwards;
+    }
+    .card:nth-child(2) { animation-delay: 90ms; }
+    .card:nth-child(3) { animation-delay: 180ms; }
+    @keyframes rise { to { opacity: 1; transform: translateY(0); } }
+    .card h2 {
+      margin: 0;
+      padding: 14px 16px;
+      font: 600 15px/1.2 'Space Grotesk', sans-serif;
+      letter-spacing: 0.02em;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot.left { background: var(--left); }
+    .dot.mid { background: var(--mid); }
+    .dot.right { background: var(--right); }
+    .chat {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow-y: auto;
+      flex: 1;
+      min-height: 0;
+    }
+    .bubble {
+      max-width: 92%;
+      border-radius: 13px;
+      padding: 10px 12px;
+      font-size: 14px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+    }
+    .me { align-self: flex-end; background: #d8eff9; border: 1px solid #b7ddeb; }
+    .bot { align-self: flex-start; background: #f2f7fb; border: 1px solid #d5e4ee; }
+    .prism { background: #e6f5ee; border-color: #bfdfce; }
+    .composer {
+      border-top: 1px solid var(--line);
+      padding: 12px;
+      display: grid;
+      gap: 8px;
+      background: rgba(255,255,255,0.62);
+    }
+    .featured-prompts {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,0.55);
+    }
+    .featured-prompts.compact { display: none; }
+    @keyframes attention-glow {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(15, 90, 122, 0); }
+      50% { box-shadow: 0 0 0 4px rgba(15, 90, 122, 0.22); }
+    }
+    .featured-prompts.attention .featured-card {
+      animation: attention-glow 2.4s ease-in-out infinite;
+      border-color: rgba(15, 90, 122, 0.5);
+    }
+    .featured-prompts.attention .featured-card:nth-child(3) { animation-delay: 200ms; }
+    .featured-prompts.attention .featured-card:nth-child(4) { animation-delay: 400ms; }
+    .featured-prompts.attention .featured-card:nth-child(5) { animation-delay: 600ms; }
+    .attention-btn {
+      animation: attention-glow 2.4s ease-in-out infinite;
+    }
+    .or-divider {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 14px 0;
+      font: 600 10.5px/1 'Space Grotesk', sans-serif;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .or-divider.hidden { display: none; }
+    .or-divider::before,
+    .or-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--line);
+    }
+    .featured-header {
+      grid-column: 1 / -1;
+      font: 600 11px/1 'Space Grotesk', sans-serif;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+    .featured-card {
+      text-align: left;
+      padding: 10px 12px;
+      background: rgba(255,255,255,0.92);
+      border: 1px solid rgba(15, 90, 122, 0.18);
+      border-radius: 11px;
+      cursor: pointer;
+      font: 400 12.5px/1.4 'IBM Plex Sans', sans-serif;
+      color: var(--ink);
+      transition: border-color 150ms ease, background 150ms ease, transform 100ms ease;
+      box-shadow: 0 1px 0 rgba(15, 90, 122, 0.04);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-height: 0;
+    }
+    .featured-card:hover {
+      border-color: rgba(15, 90, 122, 0.55);
+      background: #fff;
+      transform: translateY(-1px);
+    }
+    .featured-card-title {
+      font: 600 12.5px/1.2 'Space Grotesk', sans-serif;
+      letter-spacing: 0.01em;
+      color: #0f5a7a;
+    }
+    .featured-card-label {
+      font: 500 9.5px/1 'Space Grotesk', sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-right: 6px;
+    }
+    .featured-card-preview {
+      color: #4a5963;
+      font-size: 11.5px;
+      line-height: 1.4;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      line-clamp: 3;
+      -webkit-box-orient: vertical;
+    }
+    .example-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .example-chips:empty,
+    .example-chips.hidden { display: none; }
+    .example-chips-label {
+      font: 500 10.5px/1.4 'Space Grotesk', sans-serif;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      align-self: center;
+      margin-right: 4px;
+    }
+    .example-chip {
+      padding: 5px 10px;
+      font: 500 11.5px/1 'IBM Plex Sans', sans-serif;
+      color: #0f5a7a;
+      background: rgba(15, 90, 122, 0.08);
+      border: 1px solid rgba(15, 90, 122, 0.22);
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 150ms ease, border-color 150ms ease;
+    }
+    .example-chip:hover {
+      background: rgba(15, 90, 122, 0.16);
+      border-color: rgba(15, 90, 122, 0.36);
+    }
+    .example-chip:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    textarea, input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 11px;
+      resize: vertical;
+      min-height: 42px;
+      font: 400 14px/1.35 'IBM Plex Sans', sans-serif;
+      background: #fff;
+      color: var(--ink);
+    }
+    textarea:focus, input:focus { outline: 2px solid #9fd2be; border-color: #9fd2be; }
+    button {
+      border: 0;
+      border-radius: 11px;
+      padding: 10px 12px;
+      font: 600 13px/1 'Space Grotesk', sans-serif;
+      letter-spacing: 0.03em;
+      color: #fff;
+      background: linear-gradient(135deg, #1e6a8b, #14556f);
+      cursor: pointer;
+    }
+    .secondary-btn {
+      color: var(--ink);
+      background: rgba(255,255,255,0.88);
+      border: 1px solid var(--line);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.5);
+    }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+    .meta {
+      font-size: 12px;
+      color: var(--muted);
+      padding: 0 14px 10px;
+    }
+    .mid-body {
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+      align-content: start;
+      overflow-y: auto;
+      flex: 1;
+      min-height: 0;
+    }
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      gap: 8px;
+    }
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 10px;
+      background: #fff;
+    }
+    .label { font-size: 11px; color: var(--muted); }
+    .value { font: 600 16px/1.1 'Space Grotesk', sans-serif; margin-top: 4px; }
+    .highlight-box {
+      border: 1px solid #e5d7a4;
+      background: #fffcef;
+      border-radius: 11px;
+      padding: 10px;
+      font-size: 14px;
+      line-height: 1.45;
+      min-height: 150px;
+      overflow-y: auto;
+      max-height: 100%;
+    }
+    .muted { color: #8a8f96; }
+    .extraction-context {
+      display: block;
+      font-size: 11px;
+      line-height: 1.4;
+      color: #b0a98c;
+      font-style: italic;
+      margin-bottom: 8px;
+      max-height: 4.2em;
+      overflow: hidden;
+      white-space: pre-wrap;
+      text-overflow: ellipsis;
+    }
+    .extraction-divider {
+      height: 1px;
+      background: rgba(229, 215, 164, 0.5);
+      margin-bottom: 8px;
+    }
+    .token-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      align-content: flex-start;
+    }
+    .token-chip {
+      position: relative;
+      display: inline-flex;
+      align-items: baseline;
+      padding: 3px 7px 3px 6px;
+      background: rgba(246, 181, 69, 0.16);
+      border: 1px solid rgba(246, 181, 69, 0.42);
+      border-radius: 5px;
+      font: 500 12.5px/1.25 'IBM Plex Mono', ui-monospace, monospace;
+      color: #5a4218;
+      white-space: pre;
+    }
+    .token-chip .t-space::before {
+      content: '·';
+      color: rgba(122, 91, 20, 0.35);
+      margin-right: 1px;
+    }
+    .chat::-webkit-scrollbar, .mid-body::-webkit-scrollbar, .highlight-box::-webkit-scrollbar {
+      width: 6px;
+    }
+    .chat::-webkit-scrollbar-thumb, .mid-body::-webkit-scrollbar-thumb, .highlight-box::-webkit-scrollbar-thumb {
+      background: rgba(0,0,0,0.15);
+      border-radius: 3px;
+    }
+    .chat::-webkit-scrollbar-track, .mid-body::-webkit-scrollbar-track, .highlight-box::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .hidden { display: none; }
+    .status-banner {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      margin-bottom: 14px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.78);
+      font: 500 13px/1.4 'IBM Plex Sans', sans-serif;
+      color: var(--ink);
+      transition: opacity 400ms ease, background 300ms ease, border-color 300ms ease;
+    }
+    .status-banner.hidden { display: none; }
+    .status-banner.ready { opacity: 0; pointer-events: none; }
+    .status-banner.loading {
+      border-color: #f3d98a;
+      background: linear-gradient(120deg, #fff8e3 0%, #fff4d2 60%, #fef0c2 100%);
+      color: #7a5b14;
+      box-shadow: 0 4px 14px rgba(246, 181, 69, 0.18);
+    }
+    .status-banner.loading strong { color: #5a3f00; }
+    .status-banner.error {
+      border-color: #e7a4a4;
+      background: #fff5f5;
+      color: #a8332a;
+    }
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #f6b545;
+      box-shadow: 0 0 0 0 rgba(246, 181, 69, 0.55);
+      animation: pulse-warm 1.4s ease-in-out infinite;
+    }
+    .status-banner.error .status-dot {
+      background: #c0392b;
+      animation: none;
+    }
+    @keyframes pulse-warm {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(246,181,69,0.55); }
+      50% { box-shadow: 0 0 0 6px rgba(246,181,69,0); }
+    }
+    .mode-select-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 4px 6px 4px 12px;
+    }
+    .mode-select-wrap.hidden { display: none; }
+    .mode-select-label {
+      font: 600 11px/1 'Space Grotesk', sans-serif;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .mode-select {
+      appearance: none;
+      -webkit-appearance: none;
+      background: #fff;
+      color: var(--ink);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 6px 28px 6px 12px;
+      font: 600 12px/1 'Space Grotesk', sans-serif;
+      cursor: pointer;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%231a2630' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      max-width: 280px;
+    }
+    .app-mode-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      padding: 3px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.78);
+      border: 1px solid var(--line);
+    }
+    .app-mode-toggle button {
+      padding: 6px 12px;
+      font: 600 12px/1 'Space Grotesk', sans-serif;
+      letter-spacing: 0.03em;
+      color: var(--muted);
+      background: transparent;
+      border: 0;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+    .app-mode-toggle button.active {
+      color: #fff;
+      background: linear-gradient(135deg, #1e6a8b, #14556f);
+      box-shadow: 0 2px 8px rgba(20, 85, 111, 0.25);
+    }
+    body.compare-mode .grid {
+      grid-template-columns: 1fr 0.55fr 1.45fr;
+    }
+    body.compare-mode .grid > .prism-card { display: none; }
+    body.compare-mode .grid > .compare-card {
+      display: flex;
+      height: 82vh;
+      max-height: 82vh;
+    }
+    body:not(.compare-mode) .compare-card { display: none; }
+    .compare-grid {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 10px;
+      overflow: hidden;
+      min-height: 0;
+    }
+    .compare-col {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      background: rgba(255,255,255,0.55);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .compare-col-h {
+      padding: 8px 12px;
+      font: 600 12px/1.2 'Space Grotesk', sans-serif;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--ink);
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,0.75);
+    }
+    .compare-col .compare-chat {
+      flex: 1;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      overflow-y: auto;
+      min-height: 0;
+    }
+    .compare-col .compare-prompt {
+      border: 0;
+      border-top: 1px solid var(--line);
+      border-radius: 0;
+      min-height: 38px;
+      background: rgba(255,255,255,0.78);
+    }
+    .compare-col .compare-prompt:focus { outline: 2px solid #9fd2be; }
+    .icon-btn {
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--ink);
+      background: rgba(255,255,255,0.88);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      cursor: pointer;
+    }
+    .icon-btn:hover { background: #fff; }
+    .icon-btn svg { width: 18px; height: 18px; }
+    .settings-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(17, 28, 38, 0.32);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+    }
+    .settings-overlay.hidden { display: none; }
+    .settings-panel {
+      width: min(460px, 92vw);
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 24px 60px rgba(15, 32, 50, 0.28);
+      overflow: hidden;
+    }
+    .settings-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+    .settings-header h3 {
+      margin: 0;
+      font: 600 16px/1.2 'Space Grotesk', sans-serif;
+    }
+    .settings-close {
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      border: 0;
+      font-size: 20px;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .settings-close:hover { background: rgba(0,0,0,0.06); color: var(--ink); }
+    .settings-body {
+      padding: 16px 18px;
+      display: grid;
+      gap: 16px;
+    }
+    .settings-field {
+      display: grid;
+      gap: 4px;
+    }
+    .settings-field label {
+      font: 600 12px/1.2 'Space Grotesk', sans-serif;
+      letter-spacing: 0.03em;
+      color: var(--ink);
+    }
+    .settings-field .hint {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    .settings-field input[type="number"] {
+      width: 140px;
+      min-height: 36px;
+    }
+    .settings-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 14px 18px;
+      border-top: 1px solid var(--line);
+      background: #fafbfc;
+    }
+    @media (max-width: 1080px) {
+      .grid { grid-template-columns: 1fr; }
+      .card { height: 45vh; max-height: 45vh; }
+      .top { flex-direction: column; align-items: stretch; }
+      .top-actions { justify-content: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="top-copy">
+        <h1>PRISM: Activation-based Instruction Recovery</h1>
+        <div id="modePill" class="mode-pill">Loading...</div>
+        <div id="subtitle" class="sub">Loading demo configuration...</div>
+      </div>
+      <div class="top-actions">
+        <div id="appModeToggle" class="app-mode-toggle" role="tablist" aria-label="App mode">
+          <button type="button" id="appModePrism" class="active" role="tab" aria-selected="true">PRISM only</button>
+          <button type="button" id="appModeCompare" role="tab" aria-selected="false">Compare baselines</button>
+        </div>
+        <div id="modeSelectWrap" class="mode-select-wrap hidden">
+          <span class="mode-select-label">Variant</span>
+          <select id="modeSelect" class="mode-select"></select>
+        </div>
+        <button id="settingsToggle" class="icon-btn" title="Settings" aria-label="Settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+        <button id="resetDemo" class="secondary-btn">Reset Demo</button>
+      </div>
+    </div>
+
+    <div id="settingsOverlay" class="settings-overlay hidden">
+      <div class="settings-panel" role="dialog" aria-labelledby="settingsTitle" aria-modal="true">
+        <div class="settings-header">
+          <h3 id="settingsTitle">Settings</h3>
+          <button id="settingsClose" class="settings-close" aria-label="Close settings">&times;</button>
+        </div>
+        <div class="settings-body">
+          <div class="settings-field">
+            <label for="setBaseMax">Base response max tokens</label>
+            <input id="setBaseMax" type="number" min="16" step="16" />
+            <span class="hint">How many tokens the base model generates per turn. Higher = longer response, slower.</span>
+          </div>
+          <div class="settings-field">
+            <label for="setRetMax">PRISM retrieval max tokens</label>
+            <input id="setRetMax" type="number" min="16" step="16" />
+            <span class="hint">How many tokens PRISM decodes from the soft tokens during retrieval.</span>
+          </div>
+          <div class="settings-field">
+            <label for="setActTokens">Activation tokens (extraction window)</label>
+            <input id="setActTokens" type="number" min="1" step="8" />
+            <span class="hint">Last N response tokens whose hidden states feed PRISM. The model was trained with a specific window; deviating may degrade quality.</span>
+          </div>
+        </div>
+        <div class="settings-footer">
+          <button id="settingsReset" class="secondary-btn">Reset to defaults</button>
+          <button id="settingsDone">Done</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="statusBanner" class="status-banner">
+      <span class="status-dot"></span>
+      <span id="statusText">Cold start — booting the GPU container...</span>
+    </div>
+
+    <div class="grid">
+      <section class="card left-card">
+        <h2><span class="dot left"></span>1) Base Model Chat</h2>
+        <div id="leftChat" class="chat"></div>
+        <div id="featuredPrompts" class="featured-prompts"></div>
+        <div id="orDivider" class="or-divider"><span>or try your own prompt</span></div>
+        <div class="composer">
+          <textarea id="userPrompt" rows="4" placeholder="Or type your own prompt..."></textarea>
+          <button id="runBase" disabled>Loading model...</button>
+          <div id="examplePrompts" class="example-chips hidden"></div>
+        </div>
+        <div id="leftMeta" class="meta"></div>
+      </section>
+
+      <section class="card middle-card">
+        <h2><span class="dot mid"></span>2) Activation Extraction View</h2>
+        <div class="mid-body">
+          <div class="stat-grid">
+            <div class="stat"><div class="label">Assistant Tokens</div><div id="tokAll" class="value">-</div></div>
+            <div class="stat"><div class="label">Extracted Tokens</div><div id="tokUsed" class="value">-</div></div>
+            <div class="stat"><div class="label">Truncated Tokens</div><div id="tokDrop" class="value">-</div></div>
+            <div class="stat"><div class="label">Latency</div><div id="latBase" class="value">-</div></div>
+          </div>
+          <div class="label">Highlighted assistant span used as activation source</div>
+          <div id="highlightBox" class="highlight-box muted">Run the left chat first.</div>
+        </div>
+      </section>
+
+      <section class="card prism-card">
+        <h2><span class="dot right"></span>3) Latent Retrieval</h2>
+        <div id="rightChat" class="chat"></div>
+        <div class="composer">
+          <input id="retrievalPrompt" placeholder="" />
+          <button id="runRetrieval" disabled>Retrieve</button>
+        </div>
+        <div id="rightMeta" class="meta"></div>
+      </section>
+
+      <section class="card compare-card">
+        <h2><span class="dot right"></span>3) Latent Retrieval — Compare Baselines</h2>
+        <div class="compare-grid">
+          <div class="compare-col">
+            <div class="compare-col-h" id="prismColHead">PRISM</div>
+            <div id="prismCol" class="compare-chat"></div>
+            <input id="prismCompPrompt" class="compare-prompt hidden" />
+          </div>
+          <div class="compare-col">
+            <div class="compare-col-h">LatentQA</div>
+            <div id="latentqaCol" class="compare-chat"></div>
+            <input id="latentqaPrompt" class="compare-prompt hidden" />
+          </div>
+          <div class="compare-col">
+            <div class="compare-col-h">Activation Oracles</div>
+            <div id="aoCol" class="compare-chat"></div>
+            <input id="aoPrompt" class="compare-prompt hidden" />
+          </div>
+        </div>
+        <div class="composer">
+          <button id="runCompare" disabled>Run comparison</button>
+        </div>
+        <div id="compareMeta" class="meta"></div>
+      </section>
+    </div>
+  </div>
+
+<script>
+const state = {
+  config: null,
+  active_mode: '',
+  appMode: 'prism', // 'prism' | 'compare'
+  variant_by_key: {},
+  baselines_by_key: {},
+  userPrompt: '',
+  assistantResponse: '',
+  modelReady: false,
+  baselinesReady: false,
+  guideStep: null,
+  settings: {
+    base_max_new_tokens: 512,
+    retrieval_max_new_tokens: 256,
+    max_act_tokens: 128,
+  },
+  limits: {
+    base_max_new_tokens: 2048,
+    retrieval_max_new_tokens: 1024,
+    max_act_tokens: 512,
+  },
+};
+
+function clampSetting(key, value) {
+  const v = parseInt(value, 10);
+  if (Number.isNaN(v)) return state.settings[key];
+  const max = state.limits[key];
+  return Math.max(1, Math.min(max, v));
+}
+
+function defaultsForActiveVariant() {
+  const cfg = state.config;
+  if (!cfg) return { ...state.settings };
+  const base = cfg.defaults || {};
+  const variant = state.variant_by_key[state.active_mode] || {};
+  const variantDefaults = variant.defaults || {};
+  return {
+    base_max_new_tokens: base.base_max_new_tokens ?? 512,
+    retrieval_max_new_tokens: base.retrieval_max_new_tokens ?? 256,
+    max_act_tokens: variantDefaults.max_act_tokens ?? base.max_act_tokens ?? 128,
+  };
+}
+
+function applySettingsToInputs() {
+  document.getElementById('setBaseMax').value = state.settings.base_max_new_tokens;
+  document.getElementById('setRetMax').value = state.settings.retrieval_max_new_tokens;
+  document.getElementById('setActTokens').value = state.settings.max_act_tokens;
+}
+
+function readSettingsFromInputs() {
+  state.settings.base_max_new_tokens = clampSetting('base_max_new_tokens', document.getElementById('setBaseMax').value);
+  state.settings.retrieval_max_new_tokens = clampSetting('retrieval_max_new_tokens', document.getElementById('setRetMax').value);
+  state.settings.max_act_tokens = clampSetting('max_act_tokens', document.getElementById('setActTokens').value);
+}
+
+const BASE_BUTTON_LABEL = 'Generate Base Response';
+const BASE_BUTTON_WAITING = 'Loading model...';
+
+function setModelReady(ready) {
+  state.modelReady = ready;
+  const runBase = document.getElementById('runBase');
+  const runRetrieval = document.getElementById('runRetrieval');
+  const runCompare = document.getElementById('runCompare');
+  if (ready) {
+    runBase.disabled = false;
+    runBase.textContent = BASE_BUTTON_LABEL;
+    if (state.userPrompt && state.assistantResponse) {
+      runRetrieval.disabled = false;
+      runCompare.disabled = false;
+    }
+    // Kick off the guided flow once: highlight the featured cards.
+    if (state.guideStep === null) {
+      const hasChat = document.getElementById('leftChat').children.length > 0;
+      if (!hasChat) setGuideStep('cards');
+    }
+  } else {
+    runBase.disabled = true;
+    runBase.textContent = BASE_BUTTON_WAITING;
+    runRetrieval.disabled = true;
+    runCompare.disabled = true;
+  }
+}
+
+function renderStatus(status, message) {
+  const banner = document.getElementById('statusBanner');
+  const text = document.getElementById('statusText');
+  banner.classList.remove('error', 'ready', 'loading');
+  if (status === 'ready') {
+    text.textContent = 'Ready';
+    banner.classList.add('ready');
+    setTimeout(() => banner.classList.add('hidden'), 600);
+    setModelReady(true);
+    refreshConfigDefaults();
+  } else if (status === 'error') {
+    text.textContent = message || 'Model failed to load. Try refreshing in a minute.';
+    banner.classList.add('error');
+    setModelReady(false);
+  } else {
+    // idle or loading
+    const msg = message || 'Loading the model into GPU (this may take ~30s on cold start)...';
+    text.innerHTML = `<strong>Loading model</strong> — ${msg}`;
+    banner.classList.add('loading');
+    setModelReady(false);
+  }
+}
+
+async function refreshConfigDefaults() {
+  // /api/config returns per-variant max_act_tokens defaults only after the
+  // runtime has loaded. Re-fetch once ready so the settings panel picks them up.
+  try {
+    const resp = await fetch('/api/config', { cache: 'no-store' });
+    if (!resp.ok) return;
+    const config = await resp.json();
+    state.config = config;
+    state.variant_by_key = Object.fromEntries(config.variants.map(v => [v.key, v]));
+    // Re-apply the active variant's defaults, but don't clobber settings the
+    // user already opened. Only update max_act_tokens if it still matches the
+    // previously-served default (i.e. user hasn't customized).
+    const fresh = defaultsForActiveVariant();
+    if (state.settings.max_act_tokens === 128) {
+      state.settings.max_act_tokens = fresh.max_act_tokens;
+      applySettingsToInputs();
+    }
+  } catch (_) { /* ignore */ }
+}
+
+async function pollStatus() {
+  let delay = 800;
+  while (true) {
+    try {
+      const resp = await fetch('/api/status', { cache: 'no-store' });
+      const data = await resp.json();
+      renderStatus(data.status, data.message);
+      if (data.status === 'ready' || data.status === 'error') return;
+    } catch (_) {
+      // Container still spinning up; show cold-start message
+      renderStatus('loading', 'Cold start — waiting for the container to come online...');
+    }
+    await new Promise((r) => setTimeout(r, delay));
+    delay = Math.min(delay + 200, 2000);
+  }
+}
+
+function addBubble(el, text, cls) {
+  const b = document.createElement('div');
+  b.className = `bubble ${cls}`;
+  b.textContent = text;
+  el.appendChild(b);
+  el.scrollTop = el.scrollHeight;
+}
+
+function setBusy(btn, busy, labelBusy, labelIdle) {
+  btn.disabled = busy;
+  btn.textContent = busy ? labelBusy : labelIdle;
+}
+
+function resetDemo() {
+  state.userPrompt = '';
+  state.assistantResponse = '';
+
+  document.getElementById('userPrompt').value = '';
+  document.getElementById('leftChat').innerHTML = '';
+  document.getElementById('rightChat').innerHTML = '';
+  document.getElementById('leftMeta').textContent = '';
+  document.getElementById('rightMeta').textContent = '';
+  document.getElementById('tokAll').textContent = '-';
+  document.getElementById('tokUsed').textContent = '-';
+  document.getElementById('tokDrop').textContent = '-';
+  document.getElementById('latBase').textContent = '-';
+
+  document.getElementById('retrievalPrompt').value = '';
+
+  const box = document.getElementById('highlightBox');
+  box.classList.add('muted');
+  box.textContent = 'Run the left chat first.';
+
+  document.getElementById('runRetrieval').disabled = true;
+
+  // Compare columns
+  ['prismCol', 'latentqaCol', 'aoCol'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '';
+  });
+  const compareMeta = document.getElementById('compareMeta');
+  if (compareMeta) compareMeta.textContent = '';
+  document.getElementById('runCompare').disabled = true;
+
+  if (typeof syncExampleVisibility === 'function') syncExampleVisibility();
+  // Restart the guided flow from the beginning.
+  if (state.modelReady && typeof setGuideStep === 'function') setGuideStep('cards');
+  else if (typeof setGuideStep === 'function') setGuideStep(null);
+}
+
+function applyVariantUI(variantKey) {
+  const variant = state.variant_by_key[variantKey];
+  if (!variant) return;
+  document.getElementById('modePill').textContent = variant.display_name;
+  document.getElementById('subtitle').textContent = variant.subtitle;
+  const select = document.getElementById('modeSelect');
+  if (select.value !== variantKey) select.value = variantKey;
+}
+
+async function loadConfig() {
+  const resp = await fetch('/api/config');
+  const config = await resp.json();
+  if (!resp.ok) {
+    throw new Error(config.detail || 'Failed to load demo config');
+  }
+
+  state.config = config;
+  if (config.compare_available === false) {
+    const toggle = document.getElementById('appModeToggle');
+    if (toggle) toggle.classList.add('hidden');
+  }
+  state.variant_by_key = Object.fromEntries(config.variants.map(v => [v.key, v]));
+  state.active_mode = config.primary_variant;
+
+  if (config.limits) {
+    state.limits = { ...state.limits, ...config.limits };
+  }
+  state.settings = defaultsForActiveVariant();
+  applySettingsToInputs();
+
+  const retrievalPrompt = document.getElementById('retrievalPrompt');
+  retrievalPrompt.placeholder = config.retrieval_placeholder || '';
+  retrievalPrompt.classList.toggle('hidden', !config.show_retrieval_input);
+
+  document.getElementById('runRetrieval').textContent = config.retrieval_button_label || 'Retrieve';
+
+  const wrap = document.getElementById('modeSelectWrap');
+  const select = document.getElementById('modeSelect');
+  select.innerHTML = '';
+
+  if (config.variants.length > 1) {
+    wrap.classList.remove('hidden');
+    config.variants.forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v.key;
+      opt.textContent = v.display_name;
+      select.appendChild(opt);
+    });
+    select.value = state.active_mode;
+    select.addEventListener('change', () => {
+      const newMode = select.value;
+      if (state.active_mode === newMode) return;
+      state.active_mode = newMode;
+      applyVariantUI(newMode);
+      state.settings = defaultsForActiveVariant();
+      applySettingsToInputs();
+      resetDemo();
+    });
+  }
+
+  const examples = config.example_prompts || [];
+  renderFeaturedPrompts(examples);
+  renderExampleChips(examples);
+  syncExampleVisibility();
+  applyBaselineMetadata(config.baselines || []);
+  applyVariantUI(state.active_mode);
+}
+
+function applyBaselineMetadata(baselines) {
+  state.baselines_by_key = Object.fromEntries(baselines.map(b => [b.key, b]));
+  const prefill = (id, value) => {
+    const el = document.getElementById(id);
+    if (el && value) {
+      el.placeholder = value;
+      el.value = value;
+    }
+  };
+  const lqa = state.baselines_by_key.latentqa;
+  const ao = state.baselines_by_key.ao;
+  // PRISM column's input stays hidden — PRISM decodes from soft tokens, no
+  // user question needed.
+  if (lqa) prefill('latentqaPrompt', lqa.default_question);
+  if (ao) prefill('aoPrompt', ao.default_question);
+}
+
+function renderExtractionView(data) {
+  const box = document.getElementById('highlightBox');
+  box.classList.remove('muted');
+  box.innerHTML = '';
+
+  const prefix = (data.highlight_prefix_text || '').trim();
+  const tokens = Array.isArray(data.extracted_tokens) ? data.extracted_tokens : [];
+
+  // Small italic preview of the response prefix (purely contextual — dim).
+  if (prefix) {
+    const ctx = document.createElement('div');
+    ctx.className = 'extraction-context';
+    // Show the tail of the prefix so the chip strip continues from where the
+    // dim preview leaves off.
+    const PREFIX_CHARS = 160;
+    ctx.textContent = prefix.length > PREFIX_CHARS
+      ? '… ' + prefix.slice(-PREFIX_CHARS)
+      : prefix;
+    box.appendChild(ctx);
+    const div = document.createElement('div');
+    div.className = 'extraction-divider';
+    box.appendChild(div);
+  }
+
+  const strip = document.createElement('div');
+  strip.className = 'token-strip';
+  tokens.forEach((tok) => {
+    const chip = document.createElement('span');
+    chip.className = 'token-chip';
+    const text = tok.text || '';
+    const leadingSpace = /^\s/.test(text);
+    const cleanText = leadingSpace ? text.replace(/^\s+/, '') : text;
+    const textSpan = document.createElement('span');
+    if (leadingSpace) textSpan.classList.add('t-space');
+    textSpan.textContent = cleanText || '·';  // empty decode → placeholder
+    chip.appendChild(textSpan);
+    chip.title = `Token at response position ${tok.response_index}`;
+    strip.appendChild(chip);
+  });
+  box.appendChild(strip);
+
+  // Scroll to bottom so the most recent tokens are visible.
+  requestAnimationFrame(() => { box.scrollTop = box.scrollHeight; });
+}
+
+function loadExample(ex) {
+  const ta = document.getElementById('userPrompt');
+  ta.value = ex.prompt || '';
+  ta.focus();
+  ta.setSelectionRange(ta.value.length, ta.value.length);
+  if (state.modelReady) setGuideStep('generate');
+}
+
+function renderFeaturedPrompts(examples) {
+  const wrap = document.getElementById('featuredPrompts');
+  wrap.innerHTML = '';
+  if (!examples.length) return;
+  const header = document.createElement('div');
+  header.className = 'featured-header';
+  header.textContent = 'Featured prompts — click to load, then press Generate';
+  wrap.appendChild(header);
+  examples.forEach((ex) => {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'featured-card';
+    const titleRow = document.createElement('div');
+    titleRow.className = 'featured-card-title';
+    const label = document.createElement('span');
+    label.className = 'featured-card-label';
+    label.textContent = ex.label || '';
+    titleRow.appendChild(label);
+    const t = document.createElement('span');
+    t.textContent = ex.title || '';
+    titleRow.appendChild(t);
+    card.appendChild(titleRow);
+    const preview = document.createElement('div');
+    preview.className = 'featured-card-preview';
+    preview.textContent = ex.prompt || '';
+    card.appendChild(preview);
+    card.title = ex.prompt || '';
+    card.addEventListener('click', () => loadExample(ex));
+    wrap.appendChild(card);
+  });
+}
+
+function renderExampleChips(examples) {
+  const wrap = document.getElementById('examplePrompts');
+  wrap.innerHTML = '';
+  if (!examples.length) return;
+  const label = document.createElement('span');
+  label.className = 'example-chips-label';
+  label.textContent = 'Try another:';
+  wrap.appendChild(label);
+  examples.forEach((ex) => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'example-chip';
+    chip.textContent = (ex.label || '') + (ex.title ? ' · ' + ex.title : '');
+    chip.title = ex.prompt || '';
+    chip.addEventListener('click', () => loadExample(ex));
+    wrap.appendChild(chip);
+  });
+}
+
+function syncExampleVisibility() {
+  const hasChat = document.getElementById('leftChat').children.length > 0;
+  document.getElementById('featuredPrompts').classList.toggle('compact', hasChat);
+  document.getElementById('orDivider').classList.toggle('hidden', hasChat);
+  document.getElementById('examplePrompts').classList.toggle('hidden', !hasChat);
+}
+
+// ─── Guided onboarding ─────────────────────────────────────────────────
+// Cycles attention from the featured cards → Generate button → the next
+// retrieve/compare button as the user progresses through the demo.
+function setGuideStep(step) {
+  state.guideStep = step;
+  const featured = document.getElementById('featuredPrompts');
+  const runBase = document.getElementById('runBase');
+  const runRetrieval = document.getElementById('runRetrieval');
+  const runCompare = document.getElementById('runCompare');
+
+  featured.classList.toggle('attention', step === 'cards');
+  runBase.classList.toggle('attention-btn', step === 'generate');
+  runRetrieval.classList.toggle('attention-btn', step === 'retrieve');
+  runCompare.classList.toggle('attention-btn', step === 'compare');
+}
+
+function maybeAdvanceGuideFromInput() {
+  if (state.guideStep === 'cards' && state.modelReady) {
+    setGuideStep('generate');
+  }
+}
+
+document.getElementById('resetDemo').addEventListener('click', resetDemo);
+
+function setAppMode(mode) {
+  if (state.appMode === mode) return;
+  state.appMode = mode;
+  document.body.classList.toggle('compare-mode', mode === 'compare');
+  document.getElementById('appModePrism').classList.toggle('active', mode === 'prism');
+  document.getElementById('appModeCompare').classList.toggle('active', mode === 'compare');
+  document.getElementById('appModePrism').setAttribute('aria-selected', String(mode === 'prism'));
+  document.getElementById('appModeCompare').setAttribute('aria-selected', String(mode === 'compare'));
+  resetDemo();
+  if (state.modelReady) setGuideStep('cards');
+}
+document.getElementById('appModePrism').addEventListener('click', () => setAppMode('prism'));
+document.getElementById('appModeCompare').addEventListener('click', () => setAppMode('compare'));
+
+const settingsOverlay = document.getElementById('settingsOverlay');
+function openSettings() {
+  applySettingsToInputs();
+  settingsOverlay.classList.remove('hidden');
+}
+function closeSettings() {
+  readSettingsFromInputs();
+  applySettingsToInputs();
+  settingsOverlay.classList.add('hidden');
+}
+document.getElementById('settingsToggle').addEventListener('click', openSettings);
+document.getElementById('settingsClose').addEventListener('click', closeSettings);
+document.getElementById('settingsDone').addEventListener('click', closeSettings);
+document.getElementById('settingsReset').addEventListener('click', () => {
+  state.settings = defaultsForActiveVariant();
+  applySettingsToInputs();
+});
+settingsOverlay.addEventListener('click', (e) => {
+  if (e.target === settingsOverlay) closeSettings();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !settingsOverlay.classList.contains('hidden')) closeSettings();
+});
+
+/**
+ * Consume an SSE stream from a POST endpoint.
+ */
+async function streamSSE(url, body, { onToken, onDone, onError, onEvent }) {
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({ detail: resp.statusText }));
+    throw new Error(err.detail || 'Request failed');
+  }
+
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+
+    const parts = buffer.split('\n\n');
+    buffer = parts.pop();
+
+    for (const part of parts) {
+      const trimmed = part.trim();
+      if (!trimmed) continue;
+
+      for (const line of trimmed.split('\n')) {
+        if (!line.startsWith('data: ')) continue;
+        const jsonStr = line.slice(6);
+        let event;
+        try { event = JSON.parse(jsonStr); } catch { continue; }
+
+        if (onEvent) {
+          onEvent(event);
+        } else if (event.type === 'token' && onToken) {
+          onToken(event.text);
+        } else if (event.type === 'done' && onDone) {
+          onDone(event);
+        } else if (event.type === 'error' && onError) {
+          onError(event.detail || 'Unknown error');
+        }
+      }
+    }
+  }
+}
+
+document.getElementById('runBase').addEventListener('click', async () => {
+  const userPrompt = document.getElementById('userPrompt').value.trim();
+  if (!userPrompt) return;
+
+  const btn = document.getElementById('runBase');
+  setBusy(btn, true, 'Generating...', 'Generate Base Response');
+
+  const leftChat = document.getElementById('leftChat');
+  addBubble(leftChat, userPrompt, 'me');
+
+  const botBubble = document.createElement('div');
+  botBubble.className = 'bubble bot';
+  botBubble.textContent = '';
+  leftChat.appendChild(botBubble);
+
+  try {
+    syncExampleVisibility();
+    await streamSSE('/api/base/stream', {
+      user_prompt: userPrompt,
+      mode: state.active_mode,
+      max_new_tokens: state.settings.base_max_new_tokens,
+      max_act_tokens: state.settings.max_act_tokens,
+    }, {
+      onToken(text) {
+        botBubble.textContent += text;
+        leftChat.scrollTop = leftChat.scrollHeight;
+      },
+      onDone(data) {
+        document.getElementById('userPrompt').value = '';
+
+        state.userPrompt = userPrompt;
+        state.assistantResponse = data.assistant_response || botBubble.textContent.trim();
+
+        if (data.assistant_response) {
+          botBubble.textContent = data.assistant_response;
+        }
+
+        renderExtractionView(data);
+
+        document.getElementById('tokAll').textContent = String(data.assistant_token_count ?? '-');
+        document.getElementById('tokUsed').textContent = String(data.extracted_token_count ?? '-');
+        document.getElementById('tokDrop').textContent = String(data.truncated_tokens ?? '-');
+        document.getElementById('latBase').textContent = `${data.latency_sec ?? '-'}s`;
+
+        document.getElementById('leftMeta').textContent =
+          `Assistant tokens: ${data.assistant_token_count} | Extracted: ${data.extracted_token_count} | Truncated: ${data.truncated_tokens}`;
+
+        document.getElementById('runRetrieval').disabled = false;
+        document.getElementById('runCompare').disabled = false;
+        // Guide the reviewer to the next stage of the demo.
+        setGuideStep(state.appMode === 'compare' ? 'compare' : 'retrieve');
+      },
+      onError(msg) {
+        botBubble.textContent += `\nError: ${msg}`;
+      },
+    });
+  } catch (err) {
+    botBubble.textContent = `Error: ${err.message}`;
+  } finally {
+    setBusy(btn, false, 'Generating...', 'Generate Base Response');
+  }
+});
+
+document.getElementById('runRetrieval').addEventListener('click', async () => {
+  if (!state.userPrompt || !state.assistantResponse) return;
+  setGuideStep('done');
+
+  const btn = document.getElementById('runRetrieval');
+  const idleLabel = state.config?.retrieval_button_label || 'Retrieve';
+  setBusy(btn, true, 'Retrieving...', idleLabel);
+
+  const rightChat = document.getElementById('rightChat');
+  const retrievalPrompt = document.getElementById('retrievalPrompt');
+  const retrievalText = retrievalPrompt.classList.contains('hidden')
+    ? ''
+    : retrievalPrompt.value.trim();
+  const promptBubbleText = retrievalText || idleLabel;
+
+  addBubble(rightChat, promptBubbleText, 'me');
+
+  const prismBubble = document.createElement('div');
+  prismBubble.className = 'bubble bot prism';
+  prismBubble.textContent = '';
+  rightChat.appendChild(prismBubble);
+
+  try {
+    await streamSSE('/api/retrieval/stream', {
+      user_prompt: state.userPrompt,
+      assistant_response: state.assistantResponse,
+      retrieval_prompt: retrievalText,
+      mode: state.active_mode,
+      max_new_tokens: state.settings.retrieval_max_new_tokens,
+      max_act_tokens: state.settings.max_act_tokens,
+    }, {
+      onToken(text) {
+        prismBubble.textContent += text;
+        rightChat.scrollTop = rightChat.scrollHeight;
+      },
+      onDone(data) {
+        if (data.retrieval_response) {
+          prismBubble.textContent = data.retrieval_response;
+        }
+
+        document.getElementById('rightMeta').textContent =
+          `Latency: ${data.latency_sec}s | Activation tokens used: ${data.extracted_token_count}`;
+      },
+      onError(msg) {
+        prismBubble.textContent += `\nError: ${msg}`;
+      },
+    });
+  } catch (err) {
+    prismBubble.textContent = `Error: ${err.message}`;
+  } finally {
+    setBusy(btn, false, 'Retrieving...', idleLabel);
+  }
+});
+
+document.getElementById('runCompare').addEventListener('click', async () => {
+  if (!state.userPrompt || !state.assistantResponse) return;
+  setGuideStep('done');
+  const btn = document.getElementById('runCompare');
+  setBusy(btn, true, 'Comparing...', 'Run comparison');
+
+  // Prep the three columns
+  const cols = {
+    prism: document.getElementById('prismCol'),
+    latentqa: document.getElementById('latentqaCol'),
+    ao: document.getElementById('aoCol'),
+  };
+  Object.values(cols).forEach(c => { c.innerHTML = ''; });
+
+  // Show the question being asked to LatentQA and AO as a user-style bubble
+  // at the top of those columns. PRISM has no question (soft tokens), so no
+  // bubble is added there.
+  const lqaQuestion = document.getElementById('latentqaPrompt').value.trim()
+    || state.baselines_by_key?.latentqa?.default_question
+    || '';
+  const aoQuestion = document.getElementById('aoPrompt').value.trim()
+    || state.baselines_by_key?.ao?.default_question
+    || '';
+  if (lqaQuestion) addBubble(cols.latentqa, lqaQuestion, 'me');
+  if (aoQuestion) addBubble(cols.ao, aoQuestion, 'me');
+
+  const bubbles = {};
+  const meta = document.getElementById('compareMeta');
+  meta.textContent = 'Running…';
+
+  const ensureBubble = (baseline) => {
+    if (bubbles[baseline]) return bubbles[baseline];
+    const b = document.createElement('div');
+    b.className = `bubble bot ${baseline === 'prism' ? 'prism' : ''}`;
+    b.textContent = '';
+    cols[baseline]?.appendChild(b);
+    bubbles[baseline] = b;
+    return b;
+  };
+
+  const latencies = {};
+  try {
+    await streamSSE('/api/compare/stream', {
+      user_prompt: state.userPrompt,
+      assistant_response: state.assistantResponse,
+      prism_prompt: document.getElementById('prismCompPrompt').value.trim(),
+      latentqa_prompt: document.getElementById('latentqaPrompt').value.trim(),
+      ao_prompt: document.getElementById('aoPrompt').value.trim(),
+      mode: state.active_mode,
+      max_new_tokens: state.settings.retrieval_max_new_tokens,
+      max_act_tokens: state.settings.max_act_tokens,
+    }, {
+      onEvent(event) {
+        const baseline = event.baseline || 'prism';
+        const col = cols[baseline];
+        if (!col) return;
+        if (event.type === 'status') {
+          if (event.status === 'loading') meta.textContent = event.message || 'Loading baselines…';
+        } else if (event.type === 'token') {
+          ensureBubble(baseline).textContent += event.text;
+          col.scrollTop = col.scrollHeight;
+        } else if (event.type === 'done') {
+          const b = ensureBubble(baseline);
+          if (event.retrieval_response) b.textContent = event.retrieval_response;
+          if (event.latency_sec != null) latencies[baseline] = event.latency_sec;
+          const parts = ['prism','latentqa','ao']
+            .filter(k => latencies[k] != null)
+            .map(k => `${k}: ${latencies[k]}s`);
+          meta.textContent = parts.join(' | ');
+        } else if (event.type === 'error') {
+          ensureBubble(baseline).textContent = `Error: ${event.detail || 'failed'}`;
+        }
+      },
+    });
+  } catch (err) {
+    meta.textContent = `Error: ${err.message}`;
+  } finally {
+    setBusy(btn, false, 'Comparing...', 'Run comparison');
+  }
+});
+
+document.getElementById('userPrompt').addEventListener('input', (e) => {
+  if (e.target.value.trim()) maybeAdvanceGuideFromInput();
+});
+document.getElementById('userPrompt').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    document.getElementById('runBase').click();
+  }
+});
+
+document.getElementById('retrievalPrompt').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    document.getElementById('runRetrieval').click();
+  }
+});
+
+loadConfig().catch((err) => {
+  document.getElementById('subtitle').textContent = `Config load failed: ${err.message}`;
+});
+pollStatus();
+</script>
+</body>
+</html>
