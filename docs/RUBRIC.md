@@ -202,6 +202,5 @@ for `detect_score`, `detect_rate_any`, `detect_rate_avg`, `detect_rate_all` and
 The judge's system prompt is **not reproduced here** — a copy in prose drifts
 from the code. It lives in `src/prism/rl/judge.py` (`SYSTEM_PROMPT`), which is
 byte-identical to the file prism-eval uses for every published number,
-[`prism_eval/prompts/judge/published_judge.txt`](https://github.com/Offensive-AI-Lab/prism-eval/blob/main/prism_eval/prompts/judge/published_judge.txt).
-Read it there, and diff the two if you change either. Prompt variants explored
-during tuning are in prism-eval's `prism_eval/prompts/judge/variants/`.
+[`prism_eval/prompts/judge/scoring.txt`](https://github.com/Offensive-AI-Lab/prism-eval/blob/main/prism_eval/prompts/judge/scoring.txt).
+Read it there, and diff the two if you change either.
