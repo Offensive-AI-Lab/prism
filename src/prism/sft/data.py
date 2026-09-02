@@ -2,7 +2,7 @@
 data.py — Dataset loading from JSONL files for activation-conditioned finetuning.
 
 Loads multiple JSONL files, tags each sample with its source_dataset,
-provides train/val splitting and a collate_fn that tokenizes prompt_b/response_b.
+provides train/val splitting and a collate_fn that tokenizes retrieval_prompt/instruction_set.
 """
 
 import json
@@ -22,10 +22,9 @@ logger = logging.getLogger(__name__)
 class FinetuneRecord:
     id: str
     source_dataset: str
-    prompt_a: str
-    response_a: str
-    prompt_b: str
-    response_b: str
+    prompt: str
+    response: str
+    instruction_set: str
 
 
 def build_collate_fn(tokenizer, cfg: dict, source_map: dict, training: bool = True):
@@ -33,26 +32,26 @@ def build_collate_fn(tokenizer, cfg: dict, source_map: dict, training: bool = Tr
     Returns a collate function that prepares a batch for training or validation.
 
     Args:
-        training: If True and use_prompt_b_variations is enabled, randomly
-                  replaces prompt_b with a variation. If False, always uses
-                  the original prompt_b from the JSONL for consistent eval.
+        training: If True and use_retrieval_prompt_variations is enabled, randomly
+                  replaces retrieval_prompt with a variation. If False, always uses
+                  the original retrieval_prompt from the JSONL for consistent eval.
 
     Each batch item becomes:
-      - prompt_a_ids:  tokenized [prompt_a + response_a] for activation extraction
-      - prompt_a_only_len: token count of prompt_a alone (to find response_a boundary)
-      - chat_ids:      tokenized [prompt_b + response_b] for decoder
-      - answer_start:  index where response_b begins in chat_ids
+      - prompt_a_ids:  tokenized [prompt + response] for activation extraction
+      - prompt_a_only_len: token count of prompt alone (to find response boundary)
+      - chat_ids:      tokenized [retrieval_prompt + instruction_set] for decoder
+      - answer_start:  index where instruction_set begins in chat_ids
       - source_id:     int dataset label
-      - ground_truth_b: list of response_b strings (for sample logging)
-      - prompt_b_used:  list of prompt_b strings actually used (for sample logging)
+      - instruction_sets: list of instruction_set strings (for sample logging)
+      - retrieval_prompts_used: retrieval prompts actually used (for sample logging)
 
     The collate_fn handles padding to batch-max lengths.
     """
     max_act_tokens = cfg["max_act_tokens"]
     max_target_len = cfg["max_target_len"]
     skip_prompt_b = cfg.get("skip_prompt_b", False)
-    use_variations = training and cfg.get("use_prompt_b_variations", False) and not skip_prompt_b
-    variations = cfg.get("prompt_b_variations", [])
+    use_variations = training and cfg.get("use_retrieval_prompt_variations", False) and not skip_prompt_b
+    variations = cfg.get("retrieval_prompt_variations", [])
     # Apply the target-model profile's system-message override exactly like the
     # precompute path (extract.py) does, so on-the-fly activations match the
     # precomputed ones (no-op for qwen/gemma; ministral suppresses its
@@ -74,20 +73,20 @@ def build_collate_fn(tokenizer, cfg: dict, source_map: dict, training: bool = Tr
         return result
 
     def collate_fn(batch: List[FinetuneRecord]):
-        # ── Tokenize prompt_a + response_a for activation extraction ──────
+        # ── Tokenize prompt + response for activation extraction ──────
         prompt_a_only_ids_list = []
         combined_a_ids_list = []
         response_a_token_counts = []
 
         for record in batch:
             prompt_a_only = _apply_template(
-                [{"role": "user", "content": record.prompt_a}],
+                [{"role": "user", "content": record.prompt}],
                 add_generation_prompt=True,
             )
             combined_a = _apply_template(
                 [
-                    {"role": "user", "content": record.prompt_a},
-                    {"role": "assistant", "content": record.response_a},
+                    {"role": "user", "content": record.prompt},
+                    {"role": "assistant", "content": record.response},
                 ],
                 add_generation_prompt=False,
             )
@@ -115,15 +114,15 @@ def build_collate_fn(tokenizer, cfg: dict, source_map: dict, training: bool = Tr
         chat_ids_list = []
         answer_start_list = []
         ground_truth_texts = []
-        prompts_b_used = []
+        retrieval_prompts_used = []
 
         for record in batch:
-            ground_truth_texts.append(record.response_b)
+            ground_truth_texts.append(record.instruction_set)
 
             if skip_prompt_b:
                 # Pass empty-string user message to satisfy the chat template,
-                # then set answer_start past the prefix so only response_b gets loss.
-                prompts_b_used.append("")
+                # then set answer_start past the prefix so only instruction_set gets loss.
+                retrieval_prompts_used.append("")
                 prefix_ids = _apply_template(
                     [{"role": "user", "content": ""}],
                     add_generation_prompt=True,
@@ -131,7 +130,7 @@ def build_collate_fn(tokenizer, cfg: dict, source_map: dict, training: bool = Tr
                 full_ids = _apply_template(
                     [
                         {"role": "user", "content": ""},
-                        {"role": "assistant", "content": record.response_b},
+                        {"role": "assistant", "content": record.instruction_set},
                     ],
                     add_generation_prompt=False,
                 )
@@ -140,22 +139,22 @@ def build_collate_fn(tokenizer, cfg: dict, source_map: dict, training: bool = Tr
                 chat_ids_list.append(torch.tensor(full_ids, dtype=torch.long))
                 answer_start_list.append(len(prefix_ids))
             else:
-                # Choose prompt_b: variation (training) or original (eval)
+                # Choose retrieval_prompt: variation (training) or original (eval)
                 if use_variations and variations:
-                    prompt_b = random.choice(variations)
+                    retrieval_prompt = random.choice(variations)
                 else:
-                    prompt_b = record.prompt_b
+                    retrieval_prompt = cfg.get("decoder_user_prompt", "")
 
-                prompts_b_used.append(prompt_b)
+                retrieval_prompts_used.append(retrieval_prompt)
 
                 prefix_ids = _apply_template(
-                    [{"role": "user", "content": prompt_b}],
+                    [{"role": "user", "content": retrieval_prompt}],
                     add_generation_prompt=True,
                 )
                 full_ids = _apply_template(
                     [
-                        {"role": "user", "content": prompt_b},
-                        {"role": "assistant", "content": record.response_b},
+                        {"role": "user", "content": retrieval_prompt},
+                        {"role": "assistant", "content": record.instruction_set},
                     ],
                     add_generation_prompt=False,
                 )
@@ -201,10 +200,10 @@ def build_collate_fn(tokenizer, cfg: dict, source_map: dict, training: bool = Tr
             "source_ids": source_ids,
 
             # For logging (not used in forward pass)
-            "ground_truth_b": ground_truth_texts,
-            "prompts_b_used": prompts_b_used,
-            "prompts_a": [r.prompt_a for r in batch],
-            "responses_a": [r.response_a for r in batch],
+            "instruction_sets": ground_truth_texts,
+            "retrieval_prompts_used": retrieval_prompts_used,
+            "prompts": [r.prompt for r in batch],
+            "responses": [r.response for r in batch],
         }
 
     return collate_fn

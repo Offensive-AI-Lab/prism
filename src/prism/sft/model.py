@@ -136,14 +136,14 @@ def extract_activations(
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """
     Run the target model in inference mode (LoRA disabled externally), extract activations
-    from the response_a portion.
+    from the response portion.
 
     Args:
         target_model:           the target model (LoRA should be disabled before calling)
         act_store:            dict populated by the hook with key "hidden"
-        input_ids:            [B, seq_len] — tokenized prompt_a + response_a
+        input_ids:            [B, seq_len] — tokenized prompt + response
         attention_mask:       [B, seq_len]
-        prompt_only_lens:     [B] — token count of prompt_a alone per sample
+        prompt_only_lens:     [B] — token count of prompt alone per sample
         response_token_counts: [B] — actual activation count to extract per sample (≤ max_act_tokens)
         max_act_tokens:       maximum activation tokens
 
@@ -165,7 +165,7 @@ def extract_activations(
     hidden = act_store["hidden"]  # [B, seq_len, D]
     D = hidden.shape[-1]
 
-    # Extract tail of response_a activations per sample
+    # Extract tail of response activations per sample
     max_N = int(response_token_counts.max().item())
     max_N = min(max_N, max_act_tokens)
 

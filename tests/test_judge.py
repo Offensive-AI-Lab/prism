@@ -208,7 +208,7 @@ def test_batch_score_under_penalty_applied():
     body = _mock_text("1.0,1.0,1.0,1.0", "0.0")
     client = FakeClient(body)
     out = judge.batch_score(
-        prompts_a=["p"], responses_a=["r"],
+        prompts=["p"], responses=["r"],
         gt_instructions=[["a", "b", "c", "d"]],
         candidates=["- one big bullet"],
         model="fake-model", workers=1, client=client,
@@ -267,7 +267,7 @@ def test_score_one_happy_path():
     client = FakeClient(body)
     # report has two bullets → judge returns two hallucination scores
     res = judge.score_one(
-        "prompt", "response_a", ["one", "two"], "- claim_a\n- claim_b",
+        "prompt", "response", ["one", "two"], "- claim_a\n- claim_b",
         model="fake-model", client=client, max_retries=1,
     )
     assert res.instruction_scores == [1.0, 0.5]
@@ -279,7 +279,7 @@ def test_batch_score_reward_default_weights():
     body = _mock_text("1.0,1.0", "0.0,0.5")
     client = FakeClient(body)
     out = judge.batch_score(
-        prompts_a=["p"], responses_a=["r"],
+        prompts=["p"], responses=["r"],
         gt_instructions=[["gt1", "gt2"]],
         candidates=["- itm_one\n- itm_two"],
         model="fake-model", workers=1, client=client,
@@ -299,7 +299,7 @@ def test_batch_score_per_bullet_mixed():
     body = _mock_text("1.0,0.5,0.0", "0.0,0.0,1.0")
     client = FakeClient(body)
     out = judge.batch_score(
-        prompts_a=["p"], responses_a=["r"],
+        prompts=["p"], responses=["r"],
         gt_instructions=[["a", "b", "c"]],
         candidates=["- x\n- y\n- z"],
         model="fake-model", workers=1, client=client,
@@ -320,7 +320,7 @@ def test_batch_score_length_penalty_hits():
     body = _mock_text("1.0,1.0", "0.0,0.0,0.0,0.0,0.0")
     client = FakeClient(body)
     out = judge.batch_score(
-        prompts_a=["p"], responses_a=["r"],
+        prompts=["p"], responses=["r"],
         gt_instructions=[["a", "b"]],
         candidates=["- 1\n- 2\n- 3\n- 4\n- 5"],
         model="fake-model", workers=1, client=client,
@@ -336,7 +336,7 @@ def test_batch_score_length_penalty_disabled():
     body = _mock_text("1.0", "0.0,0.0,0.0,0.0")
     client = FakeClient(body)
     out = judge.batch_score(
-        prompts_a=["p"], responses_a=["r"],
+        prompts=["p"], responses=["r"],
         gt_instructions=[["a"]],
         candidates=["- 1\n- 2\n- 3\n- 4"],
         model="fake-model", workers=1, client=client,
@@ -348,7 +348,7 @@ def test_batch_score_length_penalty_disabled():
 def test_batch_score_length_mismatch():
     with pytest.raises(ValueError):
         judge.batch_score(
-            prompts_a=["p"], responses_a=["r"], gt_instructions=[["a"]], candidates=["c1", "c2"],
+            prompts=["p"], responses=["r"], gt_instructions=[["a"]], candidates=["c1", "c2"],
             model="fake", client=FakeClient("{}"),
         )
 

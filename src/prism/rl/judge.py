@@ -277,15 +277,15 @@ def _parse_text_response(text: str) -> dict:
     return out
 
 
-# ─── Instruction extraction from response_b ───────────────────────────────────
+# ─── Instruction extraction from instruction_set ───────────────────────────────────
 
 _BULLET_RE = re.compile(r"^[\s]*(?:[-*•]|\d+\.)\s+(.*)$")
 
 
-def split_instructions(response_b: str) -> list[str]:
-    """Split response_b into a list of instruction claims.
+def split_instructions(instruction_set: str) -> list[str]:
+    """Split instruction_set into a list of instruction claims.
 
-    response_b is expected to be a bullet-list or numbered-list of instruction
+    instruction_set is expected to be a bullet-list or numbered-list of instruction
     summaries. We strip bullet markers and drop blank lines. If no bullet
     structure is found we fall back to splitting on blank lines, or returning
     the whole string as a single claim.
@@ -295,7 +295,7 @@ def split_instructions(response_b: str) -> list[str]:
     bullet boundaries.
     """
     bullets = []
-    for raw in response_b.splitlines():
+    for raw in instruction_set.splitlines():
         m = _BULLET_RE.match(raw)
         if m:
             text = m.group(1).strip()
@@ -303,11 +303,11 @@ def split_instructions(response_b: str) -> list[str]:
                 bullets.append(text)
 
     if not bullets:
-        paragraphs = [p.strip() for p in re.split(r"\n\s*\n", response_b) if p.strip()]
+        paragraphs = [p.strip() for p in re.split(r"\n\s*\n", instruction_set) if p.strip()]
         if len(paragraphs) > 1:
             bullets = paragraphs
-        elif response_b.strip():
-            bullets = [response_b.strip()]
+        elif instruction_set.strip():
+            bullets = [instruction_set.strip()]
 
     # Inline-bullet collapse handling (a reward-gaming pattern) — observed in GRPO models trained against
     # the calibrated judge: they emit the entire report on ONE line with
@@ -411,8 +411,8 @@ def _make_client(
 
 
 def score_one(
-    prompt_a: str,
-    response_a: str,
+    prompt: str,
+    response: str,
     instructions: Sequence[str],
     report: str,
     *,
@@ -445,8 +445,8 @@ def score_one(
         {
             "role": "user",
             "content": USER_TEMPLATE.format(
-                prompt=prompt_a or "(not provided)",
-                model_response=response_a or "(not provided)",
+                prompt=prompt or "(not provided)",
+                model_response=response or "(not provided)",
                 instructions=instruction_text,
                 report=report_text,
             ),
@@ -562,8 +562,8 @@ def _length_penalty(
 
 
 def batch_score(
-    prompts_a: Sequence[str],
-    responses_a: Sequence[str],
+    prompts: Sequence[str],
+    responses: Sequence[str],
     gt_instructions: Sequence[Sequence[str]],
     candidates: Sequence[str],
     *,
@@ -580,7 +580,7 @@ def batch_score(
     max_retries: int = 5,
     client: Optional[OpenAI] = None,
 ) -> list[CandidateScore]:
-    """Score a flat list of (prompt_a, response_a, gt_instructions, candidate) tuples.
+    """Score a flat list of (prompt, response, gt_instructions, candidate) tuples.
 
     The four sequences must be aligned and of equal length. Caller is responsible
     for flattening (prompt × N_candidates) layouts before calling.
@@ -591,10 +591,10 @@ def batch_score(
     all populated from the same JSON response.
     """
     n = len(candidates)
-    if not (len(prompts_a) == len(responses_a) == len(gt_instructions) == n):
+    if not (len(prompts) == len(responses) == len(gt_instructions) == n):
         raise ValueError(
             f"batch_score: input lengths must match (got "
-            f"{len(prompts_a)}/{len(responses_a)}/{len(gt_instructions)}/{n})"
+            f"{len(prompts)}/{len(responses)}/{len(gt_instructions)}/{n})"
         )
 
     cli = client or _make_client()
@@ -602,7 +602,7 @@ def batch_score(
     def _run(i: int) -> CandidateScore:
         gt = list(gt_instructions[i]) or ["(no ground truth)"]
         res = score_one(
-            prompts_a[i], responses_a[i], gt, candidates[i],
+            prompts[i], responses[i], gt, candidates[i],
             model=model, client=cli, max_retries=max_retries,
         )
         mean_inst = (

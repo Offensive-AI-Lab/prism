@@ -8,7 +8,7 @@ the ITM report. A single model instance with the LoRA toggle saves ~19 GB
 VRAM (adapters OFF for activation extraction, ON for decoding).
 
 Modes:
-  - skip_prompt_b: decoder gets [soft_tokens | response_b] with no prompt_b
+  - skip_prompt_b: decoder gets [soft_tokens | instruction_set] with no retrieval_prompt
     (the released recipe — the monitor decodes from activations alone)
 """
 
@@ -20,7 +20,7 @@ FINETUNE_CONFIG = {
     "hook_layer": 16,
 
     # ─── Datasets (JSONL files from prism.datagen.generator) ───────────────────
-    # Each record has: id, source_dataset, prompt_a, response_a, prompt_b, response_b, metadata
+    # Each record has: id, source_dataset, prompt, response, retrieval_prompt, instruction_set, metadata
     # Only used for on-the-fly activation extraction; the released runs trained
     # from precomputed shards (see precomputed_dir below). Set explicitly
     # (--dataset-paths / PRISM_DATASET_PATHS).
@@ -52,8 +52,8 @@ FINETUNE_CONFIG = {
     "precomputed_dir": None,
 
     # ─── Activation extraction ──────────────────────────────────────────────────
-    # Max activation tokens to extract from response_a (tail).
-    # If response_a is shorter, use however many tokens are available.
+    # Max activation tokens to extract from response (tail).
+    # If response is shorter, use however many tokens are available.
     "max_act_tokens": 128,
 
     # ─── Projection layer ──────────────────────────────────────────────────────
@@ -81,20 +81,20 @@ FINETUNE_CONFIG = {
     "warmup_ratio": 0.03,
     "min_lr_ratio": 0.1,
 
-    # Max tokens for prompt_b + response_b combined (truncate response_b if longer)
+    # Max tokens for retrieval_prompt + instruction_set combined (truncate instruction_set if longer)
     "max_target_len": 1024,
 
-    # ─── Skip prompt_b ──────────────────────────────────────────────────────────
-    # When True, decoder input is [soft_tokens | response_b] with no prompt_b.
-    # The model learns to decode response_b directly from activations alone.
+    # ─── Skip retrieval_prompt ──────────────────────────────────────────────────────────
+    # When True, decoder input is [soft_tokens | instruction_set] with no retrieval_prompt.
+    # The model learns to decode instruction_set directly from activations alone.
     "skip_prompt_b": True,
 
     # ─── Prompt B variations ─────────────────────────────────────────────────
-    # When enabled, randomly replace prompt_b during TRAINING with semantically
+    # When enabled, randomly replace retrieval_prompt during TRAINING with semantically
     # equivalent probes to improve generalisation. Validation always uses the
-    # original prompt_b from the JSONL for consistent comparison.
-    "use_prompt_b_variations": False,
-    "prompt_b_variations": [
+    # original retrieval_prompt from the JSONL for consistent comparison.
+    "use_retrieval_prompt_variations": False,
+    "retrieval_prompt_variations": [
     ],
 
     # ─── Evaluation ────────────────────────────────────────────────────────────

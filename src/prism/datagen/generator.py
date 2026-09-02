@@ -19,8 +19,8 @@ Checkpoint directory layout:
     run_config.json       - config snapshot for human inspection
     raw_items.jsonl       - all prompts after paraphrase expansion (written once)
     responses_p0.jsonl    - {idx, response} appended per chunk (paraphrases)
-    responses_p1.jsonl    - {idx, response} appended per chunk (response_a)
-    responses_p2.jsonl    - {idx, response} appended per chunk (response_b)
+    responses_p1.jsonl    - {idx, response} appended per chunk (response)
+    responses_p2.jsonl    - {idx, response} appended per chunk (instruction_set)
     phase.txt             - current phase marker
 
 The run_id is a 12-char hash of the config parameters that define the
@@ -80,7 +80,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Fixed oracle prompt — identical across every record, forever
 # ---------------------------------------------------------------------------
-PROMPT_B = (
+RETRIEVAL_PROMPT_MULTI_TURN = (
     "Look at the very first user message in this conversation. "
     "List only the instructions and explicit constraints from that message as concise bullet points. "
     "Do not add, infer, or fabricate any requirements that were not explicitly stated. "
@@ -88,11 +88,11 @@ PROMPT_B = (
     "If there is only one instruction and no constraints, list just that single instruction."
 )
 
-# Single-turn variant: oracle sees only prompt_a, not response_a. Avoids the
-# failure mode where the model keeps "doing the task" after response_a.
-# Uses delimiter markers so strict-formatting constraints inside prompt_a
+# Single-turn variant: oracle sees only prompt, not response. Avoids the
+# failure mode where the model keeps "doing the task" after response.
+# Uses delimiter markers so strict-formatting constraints inside prompt
 # (e.g. "no commas", "all caps") aren't mistaken as instructions to the oracle.
-PROMPT_B_PROMPT_ONLY = (
+RETRIEVAL_PROMPT = (
     "You are an instruction analyst. Below, between the markers "
     "<<<MESSAGE_START>>> and <<<MESSAGE_END>>>, is a user message that asked "
     "an assistant to do something. Your job is to ENUMERATE the instructions "
@@ -110,7 +110,7 @@ PROMPT_B_PROMPT_ONLY = (
     "- If the message contains exactly one instruction with no constraints, "
     "output a single bullet restating it.\n"
     "- Output ONLY the bullet list. Begin your reply with '- '.\n\n"
-    "<<<MESSAGE_START>>>\n{prompt_a}\n<<<MESSAGE_END>>>"
+    "<<<MESSAGE_START>>>\n{prompt}\n<<<MESSAGE_END>>>"
 )
 
 # Paraphrase-generation prompt (phase 0).
@@ -119,7 +119,7 @@ PARAPHRASE_PROMPT = (
     "constraints, and output format — but vary the sentence structure, "
     "word choice, and ordering of information significantly. "
     "Do not add or remove any requirements. Output only the rewritten instruction.\n\n"
-    "Instruction:\n{prompt_a}"
+    "Instruction:\n{prompt}"
 )
 
 ORACLE_MODES = ("multi_turn", "prompt_only")
@@ -139,7 +139,7 @@ class GeneratorConfig:
     temperature: float = 0.3
     max_prompt_tokens: int = 1024   # reject prompts longer than this
     max_tokens_response_a: int = 2048
-    max_tokens_response_b: int = 512
+    max_tokens_instruction_set: int = 512
     max_tokens_paraphrase: int = 1024
 
     # vLLM offline specific
@@ -154,12 +154,12 @@ class GeneratorConfig:
     # Dataset
     output_path: str = "oracle_dataset.jsonl"
     max_examples_per_source: Optional[int] = 2000
-    min_response_a_words: int = 20
-    min_response_b_chars: int = 80
+    min_response_words: int = 20
+    min_instruction_set_chars: int = 80
 
     # Oracle prompt mode
-    # "multi_turn"   — PROMPT_B is asked as a third turn after prompt_a/response_a
-    # "prompt_only"  — PROMPT_B_PROMPT_ONLY is asked in a fresh context on prompt_a alone
+    # "multi_turn"   — RETRIEVAL_PROMPT_MULTI_TURN is asked as a third turn after prompt/response
+    # "prompt_only"  — RETRIEVAL_PROMPT is asked in a fresh context on prompt alone
     oracle_mode: str = "multi_turn"
 
     # Paraphrases
@@ -178,7 +178,7 @@ class GeneratorConfig:
         max_tokens / backend) can never silently mix differently-generated
         labels under the same run_id."""
         active_prompts = [
-            PROMPT_B_PROMPT_ONLY if self.oracle_mode == "prompt_only" else PROMPT_B
+            RETRIEVAL_PROMPT if self.oracle_mode == "prompt_only" else RETRIEVAL_PROMPT_MULTI_TURN
         ]
         if self.generate_paraphrases and self.paraphrases_per_example > 0:
             active_prompts.append(PARAPHRASE_PROMPT)
@@ -195,7 +195,7 @@ class GeneratorConfig:
             "backend":                 self.backend,
             "temperature":             self.temperature,
             "max_tokens_response_a":   self.max_tokens_response_a,
-            "max_tokens_response_b":   self.max_tokens_response_b,
+            "max_tokens_instruction_set":   self.max_tokens_instruction_set,
             "max_tokens_paraphrase":   self.max_tokens_paraphrase,
             "prompt_template_sha256":  prompt_hash,
         }
@@ -231,7 +231,7 @@ class CheckpointManager:
         # (phase 0) and oracle labels (phase 2) both appended to the same
         # responses_b.jsonl, cross-contaminating labels on resume.
         legacy = [
-            name for name in ("responses_a.jsonl", "responses_b.jsonl")
+            name for name in ("responses.jsonl", "responses_b.jsonl")
             if (self.dir / name).exists()
         ]
         if legacy:
@@ -278,7 +278,7 @@ class CheckpointManager:
         with open(path, "w") as f:
             for item in items:
                 f.write(json.dumps({
-                    "prompt_a":      item[0],
+                    "prompt":      item[0],
                     "source":        item[1],
                     "task_type":     item[2],
                     "group_id":      item[3],
@@ -292,7 +292,7 @@ class CheckpointManager:
             for line in f:
                 obj = json.loads(line)
                 items.append((
-                    obj["prompt_a"],
+                    obj["prompt"],
                     obj["source"],
                     obj["task_type"],
                     obj["group_id"],
@@ -304,7 +304,7 @@ class CheckpointManager:
     # ---- Per-phase response checkpointing ----
 
     def _response_path(self, phase: int) -> Path:
-        # Phase-keyed: phase 0 (paraphrases), 1 (response_a), 2 (response_b)
+        # Phase-keyed: phase 0 (paraphrases), 1 (response), 2 (instruction_set)
         # each checkpoint to their own file so they can never collide.
         return self.dir / f"responses_p{phase}.jsonl"
 
@@ -352,18 +352,17 @@ class CheckpointManager:
 class DatasetRecord:
     id: str
     source_dataset: str
-    prompt_a: str
-    response_a: str
-    prompt_b: str
-    response_b: str
+    prompt: str
+    response: str
+    instruction_set: str
     metadata: dict = field(default_factory=dict)
 
     def is_valid(self, cfg: GeneratorConfig) -> bool:
-        if not self.response_a or not self.response_b:
+        if not self.response or not self.instruction_set:
             return False
-        if len(self.response_a.split()) < cfg.min_response_a_words:
+        if len(self.response.split()) < cfg.min_response_words:
             return False
-        if len(self.response_b) < cfg.min_response_b_chars:
+        if len(self.instruction_set) < cfg.min_instruction_set_chars:
             return False
         generic = [
             "i was asked to answer",
@@ -372,7 +371,7 @@ class DatasetRecord:
             "i was asked to respond",
             "help with a task",
         ]
-        if any(p in self.response_b.lower() for p in generic):
+        if any(p in self.instruction_set.lower() for p in generic):
             return False
         return True
 
@@ -380,34 +379,34 @@ class DatasetRecord:
 # ---------------------------------------------------------------------------
 # Prompt formatting helpers
 # ---------------------------------------------------------------------------
-def fmt_response_b_messages(
-    prompt_a: str,
-    response_a: str,
+def fmt_instruction_set_messages(
+    prompt: str,
+    response: str,
     mode: str = "multi_turn",
 ) -> list[dict]:
     """Build the oracle-prompt conversation.
 
-    mode="multi_turn"  — three-turn context (prompt_a → response_a → PROMPT_B).
+    mode="multi_turn"  — three-turn context (prompt → response → RETRIEVAL_PROMPT_MULTI_TURN).
                          Label reflects what the model attended to during generation,
-                         but the model can drift into continuing response_a.
-    mode="prompt_only" — single-turn context with PROMPT_B_PROMPT_ONLY applied to
-                         prompt_a alone. Cleaner label, paraphrase-stable, avoids
+                         but the model can drift into continuing response.
+    mode="prompt_only" — single-turn context with RETRIEVAL_PROMPT applied to
+                         prompt alone. Cleaner label, paraphrase-stable, avoids
                          the "model keeps doing the task" failure mode."""
     if mode == "prompt_only":
         return [
-            {"role": "user", "content": PROMPT_B_PROMPT_ONLY.format(prompt_a=prompt_a)},
+            {"role": "user", "content": RETRIEVAL_PROMPT.format(prompt=prompt)},
         ]
     if mode == "multi_turn":
         return [
-            {"role": "user",       "content": prompt_a},
-            {"role": "assistant",  "content": response_a},
-            {"role": "user",       "content": PROMPT_B},
+            {"role": "user",       "content": prompt},
+            {"role": "assistant",  "content": response},
+            {"role": "user",       "content": RETRIEVAL_PROMPT_MULTI_TURN},
         ]
     raise ValueError(f"Unknown oracle_mode: {mode!r}. Expected one of {ORACLE_MODES}.")
 
 
-def fmt_paraphrase_prompt(prompt_a: str) -> str:
-    return PARAPHRASE_PROMPT.format(prompt_a=prompt_a)
+def fmt_paraphrase_prompt(prompt: str) -> str:
+    return PARAPHRASE_PROMPT.format(prompt=prompt)
 
 
 # ---------------------------------------------------------------------------
@@ -614,7 +613,7 @@ class UltraChatLoader(BaseDatasetLoader):
     HuggingFaceH4/ultrachat_200k
     Schema: {"prompt": str, "prompt_id": str, "messages": [{role, content}]}
 
-    We use only the first user turn (the `prompt` field) as prompt_a.
+    We use only the first user turn (the `prompt` field) as prompt.
     The dataset has 4 splits: train_sft, test_sft, train_gen, test_gen.
     Default is train_sft — override with split param if needed.
     """
@@ -659,7 +658,7 @@ class IFMultiConstraintsLoader(BaseDatasetLoader):
     """
     allenai/IF_multi_constraints_upto5
     Schema: {messages: [{role: str, content: str}, ...]}
-    We extract the first user turn content as prompt_a.
+    We extract the first user turn content as prompt.
     """
     name = "if_multi_constraints"
 
@@ -737,8 +736,8 @@ class DatasetPipeline:
     Three-phase batch pipeline with full checkpoint/resume support.
 
     Phase 0  Prompt collection + paraphrase expansion  → raw_items.jsonl
-    Phase 1  Generate response_a for all prompts       → responses_a.jsonl
-    Phase 2  Generate response_b (oracle prompt)        → responses_b.jsonl
+    Phase 1  Generate response for all prompts       → responses.jsonl
+    Phase 2  Generate instruction_set (oracle prompt)        → responses_b.jsonl
 
     Each generation phase works in chunks of cfg.chunk_size. After every
     chunk the results are appended to the checkpoint file. On resume, only
@@ -771,32 +770,32 @@ class DatasetPipeline:
 
         logger.info(f"Total items: {len(raw_items)}")
 
-        # ---- Phase 1: generate response_a ----
+        # ---- Phase 1: generate response ----
         self.ckpt.set_phase("phase1")
         ra_messages = [
             [{"role": "user", "content": item[0]}]
             for item in raw_items
         ]
-        responses_a = self._generate_with_checkpoint(
+        responses = self._generate_with_checkpoint(
             phase=1,
             messages_list=ra_messages,
             max_tokens=self.cfg.max_tokens_response_a,
-            label="response_a",
+            label="response",
         )
 
-        # ---- Phase 2: generate response_b (oracle prompt) ----
+        # ---- Phase 2: generate instruction_set (oracle prompt) ----
         self.ckpt.set_phase("phase2")
-        # Only items where response_a passed the quality gate
+        # Only items where response passed the quality gate
         rb_messages = []
         valid_indices = []
-        for i, (item, ra) in enumerate(zip(raw_items, responses_a)):
-            if ra and len(ra.split()) >= self.cfg.min_response_a_words:
-                rb_messages.append(fmt_response_b_messages(item[0], ra, mode=self.cfg.oracle_mode))
+        for i, (item, ra) in enumerate(zip(raw_items, responses)):
+            if ra and len(ra.split()) >= self.cfg.min_response_words:
+                rb_messages.append(fmt_instruction_set_messages(item[0], ra, mode=self.cfg.oracle_mode))
                 valid_indices.append(i)
 
         logger.info(
             f"Phase 2 input: {len(valid_indices)} items "
-            f"({len(raw_items) - len(valid_indices)} dropped by response_a quality gate)"
+            f"({len(raw_items) - len(valid_indices)} dropped by response quality gate)"
         )
 
         # Phase 2 indices map to valid_indices positions, not raw_items positions.
@@ -804,8 +803,8 @@ class DatasetPipeline:
         responses_b = self._generate_with_checkpoint(
             phase=2,
             messages_list=rb_messages,
-            max_tokens=self.cfg.max_tokens_response_b,
-            label="response_b",
+            max_tokens=self.cfg.max_tokens_instruction_set,
+            label="instruction_set",
         )
 
         # ---- Assemble and write records ----
@@ -814,7 +813,7 @@ class DatasetPipeline:
         skipped = 0
         for rb_idx, orig_idx in enumerate(tqdm(valid_indices, desc="Writing")):
             item = raw_items[orig_idx]
-            prompt_a, source, task_type, group_id, is_paraphrase = item
+            prompt, source, task_type, group_id, is_paraphrase = item
             # Deterministic id derived from the checkpointed identity
             # (run_id + source + raw_items index): a crashed + rerun assembly
             # produces the same ids, so duplicates are detectable/dedupable.
@@ -824,10 +823,9 @@ class DatasetPipeline:
             record = DatasetRecord(
                 id=record_uid,
                 source_dataset=source,
-                prompt_a=prompt_a,
-                response_a=responses_a[orig_idx],
-                prompt_b=(PROMPT_B_PROMPT_ONLY if self.cfg.oracle_mode == "prompt_only" else PROMPT_B),
-                response_b=responses_b[rb_idx] or "",
+                prompt=prompt,
+                response=responses[orig_idx],
+                instruction_set=responses_b[rb_idx] or "",
                 metadata={
                     "task_type":            task_type,
                     "is_paraphrase":        is_paraphrase,
@@ -866,7 +864,7 @@ class DatasetPipeline:
             for p in prompts:
                 total_seen += 1
                 # Token length filter — skip prompts that leave insufficient
-                # room for response_a + PROMPT_B + response_b in the context window
+                # room for response + RETRIEVAL_PROMPT_MULTI_TURN + instruction_set in the context window
                 if hasattr(self.backend, "count_tokens"):
                     token_count = self.backend.count_tokens(p)
                     if token_count > self.cfg.max_prompt_tokens:
@@ -1037,9 +1035,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument("--chunk-size", type=int, default=256,
                    help="Save checkpoint after every N generations")
     p.add_argument("--oracle-mode", choices=list(ORACLE_MODES), default="multi_turn",
-                   help="multi_turn: PROMPT_B asked after prompt_a/response_a. "
-                        "prompt_only: PROMPT_B_PROMPT_ONLY asked on prompt_a alone "
-                        "in a fresh context (avoids response_a drift).")
+                   help="multi_turn: RETRIEVAL_PROMPT_MULTI_TURN asked after prompt/response. "
+                        "prompt_only: RETRIEVAL_PROMPT asked on prompt alone "
+                        "in a fresh context (avoids response drift).")
     return p
 
 

@@ -7,7 +7,7 @@ embedding prefix, and the target model's generate() handles the rest natively.
 
 Caller responsibilities:
   - Provide `prefix_embeds` already containing
-    `[scaled soft tokens | prompt_b token embeds]` and a matching
+    `[scaled soft tokens | retrieval_prompt token embeds]` and a matching
     attention mask. (Building those is `prism/rl/data.py`.)
   - Ensure the policy LoRA adapter is active and `target_model` is in
     eval mode for generation.

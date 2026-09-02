@@ -7,7 +7,7 @@
 # Pipeline per target model:
 #     precompute → SFT (projection + LoRA on frozen activations) → GRPO.
 # The gemma-2 / ministral recipes reuse the Qwen-era prompt-only records
-# verbatim (deliberate off-manifold test; the prompt-only response_b labels
+# verbatim (deliberate off-manifold test; the prompt-only instruction_set labels
 # are target-model-independent); only activations are re-extracted per model.
 #
 # Required environment (see .env.example):
@@ -76,8 +76,9 @@ _rl_ckpt_dir() {
 _require_dataset() {
   if ! compgen -G "$DATASET_SRC/jsonl/*.jsonl" >/dev/null; then
     echo "ERROR: no oracle dataset at $DATASET_SRC/jsonl/*.jsonl" >&2
-    echo "       Generate it first: scripts/generate_dataset.sh, then scripts/clean_dataset.sh" >&2
-    echo "       (or point PRISM_DATASET_SRC at an existing dataset directory)." >&2
+    echo "       Download the released dataset: uv run python scripts/download_dataset.py" >&2
+    echo "       (or generate one: scripts/generate_dataset.sh + scripts/clean_dataset.sh," >&2
+    echo "       or point PRISM_DATASET_SRC at an existing dataset directory)." >&2
     exit 1
   fi
 }

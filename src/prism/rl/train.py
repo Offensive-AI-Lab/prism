@@ -1,7 +1,7 @@
 """train.py — judge-driven GRPO training for the PRISM monitor.
 
 Projection + LoRA monitor, matching the SFT architecture: raw hooked
-activations → linear projection → norm_match → concat with prompt_b token
+activations → linear projection → norm_match → concat with retrieval_prompt token
 embeds → `inputs_embeds` to the target model + LoRA.
 
 Outer loop per step:
@@ -9,7 +9,7 @@ Outer loop per step:
      extracted on the fly from the resident frozen target model).
   2. Run policy projection (grad) and ref projection (no grad) on the
      same activations; norm-match each.
-  3. Build prefix embeddings = [scaled soft | prompt_b token embeds] for
+  3. Build prefix embeddings = [scaled soft | retrieval_prompt token embeds] for
      both copies (one for the policy forward, one for the ref forward).
   4. Sample N candidates per prompt with the policy prefix + policy LoRA.
   5. Judge candidates → scalar reward per candidate.
@@ -158,9 +158,9 @@ def _project_and_scale(
 
 def _score_candidates(
     candidates: list[list[str]],   # [B][N]
-    prompts_a: list[str],          # [B]
-    responses_a: list[str],        # [B]
-    response_b_list: list[str],    # [B]
+    prompts: list[str],          # [B]
+    responses: list[str],        # [B]
+    instruction_set_list: list[str],    # [B]
     cfg: dict,
     client,
 ) -> tuple[list[list[judge.CandidateScore]], list[list[list[str]]]]:
@@ -169,7 +169,7 @@ def _score_candidates(
     Returns ``(scored, gt_per_prompt)`` where
     - ``scored[b][i]`` is the full ``CandidateScore`` (reward + per-bullet
       lists + raw judge JSON) for candidate i of prompt b.
-    - ``gt_per_prompt[b]`` is the GT bullet list parsed from ``response_b``
+    - ``gt_per_prompt[b]`` is the GT bullet list parsed from ``instruction_set``
       (echoed back so callers don't have to re-split).
     """
     B = len(candidates)
@@ -180,17 +180,17 @@ def _score_candidates(
     flat_cand: list[str] = []
     gt_per_prompt: list[list[str]] = []
     for b in range(B):
-        gt = judge.split_instructions(response_b_list[b])
+        gt = judge.split_instructions(instruction_set_list[b])
         gt_per_prompt.append(gt)
         for i in range(N):
-            flat_prompts.append(prompts_a[b])
-            flat_resps_a.append(responses_a[b])
+            flat_prompts.append(prompts[b])
+            flat_resps_a.append(responses[b])
             flat_gt.append(gt)
             flat_cand.append(candidates[b][i])
 
     scored_flat = judge.batch_score(
-        prompts_a=flat_prompts,
-        responses_a=flat_resps_a,
+        prompts=flat_prompts,
+        responses=flat_resps_a,
         gt_instructions=flat_gt,
         candidates=flat_cand,
         model=cfg["judge_model"],
@@ -266,8 +266,8 @@ class JudgeTraceWriter:
         *,
         step: int,
         record_ids: list,
-        prompts_a: list[str],
-        responses_a: list[str],
+        prompts: list[str],
+        responses: list[str],
         gt_per_prompt: list[list[str]],
         candidates: list[list[str]],
         scored: list[list[judge.CandidateScore]],
@@ -283,8 +283,8 @@ class JudgeTraceWriter:
                     "step": step,
                     "record_id": record_ids[b] if b < len(record_ids) else None,
                     "candidate_idx": i,
-                    "prompt_a": prompts_a[b],
-                    "response_a": responses_a[b],
+                    "prompt": prompts[b],
+                    "response": responses[b],
                     "gt_instructions": gt_per_prompt[b],
                     "itm_bullets": itm_bullets,
                     "itm_report": candidates[b][i],
@@ -941,12 +941,12 @@ def train(cfg: dict):
             advantages = _group_advantages(rewards)
             batch_record_ids = batch.get("record_ids")
             if batch_record_ids is None:
-                batch_record_ids = [None] * len(batch["prompts_a"])
+                batch_record_ids = [None] * len(batch["prompts"])
             judge_trace_writer.write_step(
                 step=opt_step,
                 record_ids=batch_record_ids,
-                prompts_a=batch["prompts_a"],
-                responses_a=batch["responses_a"],
+                prompts=batch["prompts"],
+                responses=batch["responses"],
                 gt_per_prompt=gt_per_prompt,
                 candidates=candidates,
                 scored=scored,
@@ -1352,8 +1352,8 @@ def train(cfg: dict):
             }
             cur_state["judge_future"] = judge_executor.submit(
                 _score_candidates,
-                candidates, batch["prompts_a"], batch["responses_a"],
-                batch["ground_truth_b"], cfg, judge_client,
+                candidates, batch["prompts"], batch["responses"],
+                batch["instruction_sets"], cfg, judge_client,
             )
 
             # ── Stage C: finish PREVIOUS batch's deferred fwd/bwd ───────────
@@ -1434,8 +1434,8 @@ def _eval_judge_reward(
             pad_token_id=cfg.get("_pad_token_id"),
         )
         scored, _gt = _score_candidates(
-            cands, batch["prompts_a"], batch["responses_a"],
-            batch["ground_truth_b"], cfg, judge_client,
+            cands, batch["prompts"], batch["responses"],
+            batch["instruction_sets"], cfg, judge_client,
         )
         rewards = _rewards_from_scored(scored)
         for row in rewards:
@@ -1456,9 +1456,9 @@ def _eval_judge_reward(
             table_rows.append((
                 source,
                 record_id,
-                batch["prompts_a"][b_idx],
-                batch["responses_a"][b_idx],
-                batch["ground_truth_b"][b_idx],
+                batch["prompts"][b_idx],
+                batch["responses"][b_idx],
+                batch["instruction_sets"][b_idx],
                 cands[b_idx][0],
                 round(cs.reward, 4),
                 round(cs.mean_instruction_score, 4),
@@ -1471,7 +1471,7 @@ def _eval_judge_reward(
         n_seen += B
 
     columns = [
-        "source", "record_id", "prompt_a", "response_a", "ground_truth",
+        "source", "record_id", "prompt", "response", "ground_truth",
         "generated", "reward", "mean_instruction_score", "mean_hallucination_score",
         "length_penalty", "instruction_scores", "hallucination_scores",
     ]

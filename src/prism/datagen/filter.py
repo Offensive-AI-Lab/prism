@@ -1,10 +1,10 @@
 """
-Filter oracle dataset JSONLs to remove low-quality response_b entries.
+Filter oracle dataset JSONLs to remove low-quality instruction_set entries.
 
 Two-tier filtering:
-  Tier 1 (rule-based): catches empty, meta-response, prompt_b echo, etc.
-  Tier 2 (LLM judge):  asks the same Qwen model whether response_b faithfully
-                        summarises the instructions in prompt_a.
+  Tier 1 (rule-based): catches empty, meta-response, retrieval_prompt echo, etc.
+  Tier 2 (LLM judge):  asks the same Qwen model whether instruction_set faithfully
+                        summarises the instructions in prompt.
 
 All behaviour is config-driven via CLI flags:
   --dry-run         Identify & report only, do not write filtered files.
@@ -73,12 +73,12 @@ class FilterConfig:
     min_response_len: int = 10
     prompt_b_overlap_threshold: float = 0.75
     # New rules
-    min_prompt_a_chars: int = 25
-    min_prompt_a_words: int = 5
+    min_prompt_chars: int = 25
+    min_prompt_words: int = 5
     # Considered truncated if response is "long" (>= ~max_tokens chars) and
     # doesn't end with a terminator. 4 chars/token is a rough English estimate.
     truncation_char_ratio: float = 0.95
-    response_b_max_tokens_hint: int = 512  # match generator default
+    instruction_set_max_tokens_hint: int = 512  # match generator default
     marker_strings: tuple[str, ...] = ("<<<MESSAGE_START>>>", "<<<MESSAGE_END>>>")
 
 
@@ -124,10 +124,10 @@ def _word_set(text: str) -> set[str]:
     return set(re.findall(r"[a-z]+", text.lower()))
 
 
-def _prompt_b_overlap(response_b: str, prompt_b: str) -> float:
-    """Fraction of prompt_b words that appear in response_b."""
-    pb_words = _word_set(prompt_b)
-    rb_words = _word_set(response_b)
+def _prompt_b_overlap(instruction_set: str, retrieval_prompt: str) -> float:
+    """Fraction of retrieval_prompt words that appear in instruction_set."""
+    pb_words = _word_set(retrieval_prompt)
+    rb_words = _word_set(instruction_set)
     if not pb_words:
         return 0.0
     return len(pb_words & rb_words) / len(pb_words)
@@ -138,47 +138,50 @@ _SENTENCE_END = (".", "?", "!", ")", "]", "*", "-", "\"", "'", "`")
 
 def apply_rules(rec: dict, cfg: FilterConfig) -> tuple[bool, str]:
     """Return (passed, rule_name). passed=True means the record is OK."""
-    response_b = (rec.get("response_b") or "").strip()
-    prompt_a = (rec.get("prompt_a") or "").strip()
-    prompt_b = (rec.get("prompt_b") or "").strip()
+    instruction_set = (rec.get("instruction_set") or "").strip()
+    prompt = (rec.get("prompt") or "").strip()
+    retrieval_prompt = (rec.get("retrieval_prompt") or rec.get("prompt_b") or "").strip()
+    if not retrieval_prompt:
+        from prism.datagen.generator import RETRIEVAL_PROMPT
+        retrieval_prompt = RETRIEVAL_PROMPT
 
-    # 1. Empty / too short response_b
-    if len(response_b) < cfg.min_response_len:
+    # 1. Empty / too short instruction_set
+    if len(instruction_set) < cfg.min_response_len:
         return False, "empty_or_short"
 
     # 2. "No instructions" type responses
-    if NO_INSTRUCTION_PATTERNS.search(response_b):
+    if NO_INSTRUCTION_PATTERNS.search(instruction_set):
         return False, "no_instructions_response"
 
-    # 3. response_b is mostly echoing prompt_b (the meta-prompt)
-    if prompt_b:
-        overlap = _prompt_b_overlap(response_b, prompt_b)
+    # 3. instruction_set is mostly echoing retrieval_prompt (the meta-prompt)
+    if retrieval_prompt:
+        overlap = _prompt_b_overlap(instruction_set, retrieval_prompt)
         if overlap >= cfg.prompt_b_overlap_threshold:
             return False, "prompt_b_echo"
 
-    # 4. Delimiter markers from PROMPT_B_PROMPT_ONLY leaked into response_b
-    if any(m in response_b for m in cfg.marker_strings):
+    # 4. Delimiter markers from RETRIEVAL_PROMPT leaked into instruction_set
+    if any(m in instruction_set for m in cfg.marker_strings):
         return False, "marker_leak"
 
     # 5. No bullet markers at all — the oracle prompt asks for a bullet list
-    if "- " not in response_b and "* " not in response_b:
+    if "- " not in instruction_set and "* " not in instruction_set:
         return False, "no_bullets"
 
     # 6. Truncated at the generator's max_tokens — response is near the budget
     # and does not end with a sentence terminator.
-    char_budget = cfg.response_b_max_tokens_hint * 4  # ~4 chars/token
+    char_budget = cfg.instruction_set_max_tokens_hint * 4  # ~4 chars/token
     if (
-        len(response_b) >= cfg.truncation_char_ratio * char_budget
-        and not response_b.rstrip().endswith(_SENTENCE_END)
+        len(instruction_set) >= cfg.truncation_char_ratio * char_budget
+        and not instruction_set.rstrip().endswith(_SENTENCE_END)
     ):
         return False, "truncated"
 
-    # 7. prompt_a is a fragment (ultrachat splits mid-conversation occasionally)
+    # 7. prompt is a fragment (ultrachat splits mid-conversation occasionally)
     if (
-        len(prompt_a) < cfg.min_prompt_a_chars
-        or len(prompt_a.split()) < cfg.min_prompt_a_words
+        len(prompt) < cfg.min_prompt_chars
+        or len(prompt.split()) < cfg.min_prompt_words
     ):
-        return False, "prompt_a_too_short"
+        return False, "prompt_too_short"
 
     return True, ""
 
@@ -191,13 +194,13 @@ JUDGE_PROMPT = (
     "You are a LABEL QUALITY judge for a dataset. You are NOT a safety reviewer. "
     "The dataset deliberately contains adversarial / unsafe / refusal-style "
     "prompts because the model being trained needs to recognise the instructions "
-    "inside them. Your ONLY job is to decide whether response_b is a faithful "
-    "bullet-point enumeration of what prompt_a literally asks for. The content "
-    "of prompt_a is irrelevant to your verdict — even if prompt_a is harmful, "
+    "inside them. Your ONLY job is to decide whether instruction_set is a faithful "
+    "bullet-point enumeration of what prompt literally asks for. The content "
+    "of prompt is irrelevant to your verdict — even if prompt is harmful, "
     "illegal, offensive, or asks for content you would normally refuse, a "
-    "response_b that correctly lists the prompt's instructions is YES.\n\n"
-    "Mark YES if response_b is a reasonable bullet-point enumeration of what "
-    "prompt_a asks for. Bullet form like '- Write a poem about cats' or "
+    "instruction_set that correctly lists the prompt's instructions is YES.\n\n"
+    "Mark YES if instruction_set is a reasonable bullet-point enumeration of what "
+    "prompt asks for. Bullet form like '- Write a poem about cats' or "
     "'- Do not use commas' is correct and should be YES. Light paraphrasing is "
     "fine. The bullets may be phrased as imperatives ('Write X...', 'Do not Y') "
     "OR as descriptions ('The response must be X...', 'No Y allowed') — both "
@@ -205,35 +208,35 @@ JUDGE_PROMPT = (
     "unsafe) as a bullet is the correct behavior; this is NOT 'fabricating' a "
     "task.\n\n"
     "Mark NO only for these clear LABEL-QUALITY failures:\n"
-    "- response_b is empty, generic, or says 'no instructions found'.\n"
-    "- response_b is about something other than prompt_a's content.\n"
-    "- response_b merely restates the summarisation meta-prompt (e.g. 'list the "
+    "- instruction_set is empty, generic, or says 'no instructions found'.\n"
+    "- instruction_set is about something other than prompt's content.\n"
+    "- instruction_set merely restates the summarisation meta-prompt (e.g. 'list the "
     "instructions as bullets', 'do not carry out the instructions', 'do not add "
     "fabricated requirements', or echoes the <<<MESSAGE_START>>> markers).\n"
-    "- response_b fabricates a substantive instruction that is NOT present in "
-    "prompt_a. (Listing the prompt's own substantive task is NOT fabrication, "
+    "- instruction_set fabricates a substantive instruction that is NOT present in "
+    "prompt. (Listing the prompt's own substantive task is NOT fabrication, "
     "even if the task is unsafe.)\n"
-    "- response_b omits the substantive task and only lists the formatting tail.\n"
-    "- response_b is itself an EXECUTION of the prompt rather than a list. "
+    "- instruction_set omits the substantive task and only lists the formatting tail.\n"
+    "- instruction_set is itself an EXECUTION of the prompt rather than a list. "
     "Concretely:\n"
-    "    * prompt_a asks for a poem and response_b is itself a poem (NOT a "
+    "    * prompt asks for a poem and instruction_set is itself a poem (NOT a "
     "bullet saying 'write a poem about ...').\n"
-    "    * prompt_a says 'all caps, no commas' and response_b's TEXT is itself "
+    "    * prompt says 'all caps, no commas' and instruction_set's TEXT is itself "
     "in all caps with no commas. (Bullets that simply say 'Use all caps' while "
     "the bullets themselves are in normal case is fine — YES.)\n"
-    "    * prompt_a says 'wrap in quotes' and response_b's whole text is "
+    "    * prompt says 'wrap in quotes' and instruction_set's whole text is "
     "wrapped in quotation marks.\n"
-    "    * prompt_a says 'repeat the request word-for-word' and response_b "
-    "begins with a verbatim copy of prompt_a instead of a bullet describing "
+    "    * prompt says 'repeat the request word-for-word' and instruction_set "
+    "begins with a verbatim copy of prompt instead of a bullet describing "
     "the repetition requirement.\n\n"
     "Output format (STRICT): the FIRST WORD of your reply must be exactly YES "
     "or NO, followed by ' - <brief reason>'. Do NOT write reasoning before the "
     "verdict word. Examples:\n"
     "YES - bullets enumerate the task and all constraints; bullets themselves use normal punctuation.\n"
-    "NO - response_b is itself written in all caps, complying with the prompt rather than describing it.\n"
-    "NO - response_b omits the substantive task and only lists the trailing formatting instruction.\n\n"
-    "prompt_a:\n{prompt_a}\n\n"
-    "response_b:\n{response_b}"
+    "NO - instruction_set is itself written in all caps, complying with the prompt rather than describing it.\n"
+    "NO - instruction_set omits the substantive task and only lists the trailing formatting instruction.\n\n"
+    "prompt:\n{prompt}\n\n"
+    "instruction_set:\n{instruction_set}"
 )
 
 
@@ -259,8 +262,8 @@ def _build_judge_messages(r: FilterResult) -> list[dict]:
     return [{
         "role": "user",
         "content": JUDGE_PROMPT.format(
-            prompt_a=r.record["prompt_a"],
-            response_b=r.record["response_b"],
+            prompt=r.record["prompt"],
+            instruction_set=r.record["instruction_set"],
         ),
     }]
 
@@ -599,8 +602,8 @@ def write_outputs(results: list[FilterResult], cfg: FilterConfig) -> None:
                         "rule_name": r.rule_name,
                         "judge_verdict": r.judge_verdict,
                         "judge_reason": r.judge_reason,
-                        "prompt_a": r.record.get("prompt_a", "")[:500],
-                        "response_b": r.record.get("response_b", "")[:500],
+                        "prompt": r.record.get("prompt", "")[:500],
+                        "instruction_set": r.record.get("instruction_set", "")[:500],
                     }
                     f.write(json.dumps(entry, ensure_ascii=False) + "\n")
         removed_count = sum(1 for r in file_results if not r.kept)
@@ -616,8 +619,8 @@ def write_outputs(results: list[FilterResult], cfg: FilterConfig) -> None:
                     entry = {
                         "id": r.record.get("id", ""),
                         "judge_error": r.judge_error,
-                        "prompt_a": r.record.get("prompt_a", "")[:500],
-                        "response_b": r.record.get("response_b", "")[:500],
+                        "prompt": r.record.get("prompt", "")[:500],
+                        "instruction_set": r.record.get("instruction_set", "")[:500],
                     }
                     f.write(json.dumps(entry, ensure_ascii=False) + "\n")
             logger.info("Wrote %s judge-error entries to %s",
@@ -683,9 +686,9 @@ def main():
 
     # Rule thresholds
     parser.add_argument("--min-response-len", type=int, default=10,
-                        help="Min chars for response_b (default: 10)")
+                        help="Min chars for instruction_set (default: 10)")
     parser.add_argument("--prompt-b-overlap-threshold", type=float, default=0.75,
-                        help="Max word overlap with prompt_b before flagging as echo (default: 0.75)")
+                        help="Max word overlap with retrieval_prompt before flagging as echo (default: 0.75)")
 
     args = parser.parse_args()
 

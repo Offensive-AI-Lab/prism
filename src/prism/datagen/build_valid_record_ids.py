@@ -5,11 +5,11 @@ precomputed_dir.
 Walks the filter's kept-output JSONLs and computes a set of record_ids that pass
 the additional quality / shape rules layered on top of the LLM-judge filter:
 
-  1. drop template-leak records — response_b contains signatures from
-     PROMPT_B_PROMPT_ONLY itself (judge let some of these through)
-  2. drop word-fragmentation records — response_b is a long list of
+  1. drop template-leak records — instruction_set contains signatures from
+     RETRIEVAL_PROMPT itself (judge let some of these through)
+  2. drop word-fragmentation records — instruction_set is a long list of
      1-word bullets (model split prompt into single-token bullets)
-  3. drop records whose response_b has more than ``max_bullets`` bullets
+  3. drop records whose instruction_set has more than ``max_bullets`` bullets
 
 The output is a JSON file containing a list of record_id strings. The
 training data loader reads this file (if present) and pre-filters its
@@ -55,8 +55,8 @@ def extract_bullets(text: str) -> list[str]:
     return _BULLET_LINE.findall(text or "")
 
 
-def is_template_leak(response_b: str) -> bool:
-    return any(p.search(response_b) for p in _TEMPLATE_LEAK_PATTERNS)
+def is_template_leak(instruction_set: str) -> bool:
+    return any(p.search(instruction_set) for p in _TEMPLATE_LEAK_PATTERNS)
 
 
 def is_word_fragmentation(bullets: list[str]) -> bool:
@@ -73,11 +73,11 @@ def is_word_fragmentation(bullets: list[str]) -> bool:
 
 def evaluate(rec: dict, max_bullets: int) -> tuple[bool, str]:
     """Return (kept, reason). kept=True means include in valid set."""
-    response_b = rec.get("response_b") or ""
-    bullets = extract_bullets(response_b)
+    instruction_set = rec.get("instruction_set") or ""
+    bullets = extract_bullets(instruction_set)
     n = len(bullets)
 
-    if is_template_leak(response_b):
+    if is_template_leak(instruction_set):
         return False, "template_leak"
     if is_word_fragmentation(bullets):
         return False, "word_fragmentation"

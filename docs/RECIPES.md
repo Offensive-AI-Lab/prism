@@ -40,10 +40,9 @@ passes the flags that turn those into the released settings above.
 
 ## Exact-reproduction caveats
 
-1. **Oracle data is regenerated, not shipped** — sampling nondeterminism and
-   judge-filter drift mean regenerated data approximates the paper's
-   datasets. The judge for both filtering and reward is
-   temperature-0, but vLLM batching is not bitwise deterministic across
-   hardware.
+1. **Use the released dataset for exact reproduction**
+   (`scripts/download_dataset.py`). Regenerating with the generation scripts
+   approximates it — sampling and judge filtering are not bitwise
+   deterministic across hardware.
 2. GRPO needs a running judge endpoint: `scripts/serve_judge.sh` (a
    Gemma-4-31B-it class model; ~2×80 GB or 1×95 GB GPU).

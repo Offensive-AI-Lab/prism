@@ -88,8 +88,8 @@ def main() -> int:
         by_id = {r.id: r for r in recs}
         miss = [s["record_id"] for s in samples if s["record_id"] not in by_id]
         bad = [s["record_id"] for s in samples if s["record_id"] in by_id and
-               (by_id[s["record_id"]].prompt_a != s["prompt_a"] or by_id[s["record_id"]].response_a != s["response_a"]
-                or by_id[s["record_id"]].response_b != s["response_b"])]
+               (by_id[s["record_id"]].prompt != s["prompt"] or by_id[s["record_id"]].response != s["response"]
+                or by_id[s["record_id"]].instruction_set != s["instruction_set"])]
         log.info("loader cross-check: %d/%d ids found, %d text mismatches", n - len(miss), n, len(bad))
         if miss or bad:
             log.error("loader mismatch: missing=%s bad=%s", miss[:5], bad[:5])
@@ -115,7 +115,7 @@ def main() -> int:
     max_abs = 0.0; sum_abs = 0.0; n_elem = 0; min_cos = 1.0; extract_s = 0.0; n_tok_mismatch = 0
     for start in range(0, n, args.batch_size):
         chunk = samples[start:start + args.batch_size]
-        recs = [Record(s["record_id"], s["source_dataset"], s["prompt_a"], s["response_a"], "", s["response_b"]) for s in chunk]
+        recs = [Record(s["record_id"], s["source_dataset"], s["prompt"], s["response"], s["instruction_set"]) for s in chunk]
         otf = otf_collate(recs)
         pre = pre_collate(chunk)
         if not torch.equal(otf["chat_prefix_input_ids"], pre["chat_prefix_input_ids"]):

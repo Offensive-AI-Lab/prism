@@ -10,9 +10,18 @@ Oracle data generation talks to any OpenAI-compatible endpoint serving the
 target model (default `http://localhost:8089/v1`), e.g.
 `vllm serve Qwen/Qwen3.5-9B --port 8089`.
 
-## 1. Oracle dataset generation + cleaning — `prism.datagen`
+## 1. Oracle dataset — download the release, or generate your own
 
-Generate the oracle dataset under `$PRISM_DATA_DIR/prompt-only/`, then clean it:
+The released records train every recipe directly:
+
+```bash
+uv run python scripts/download_dataset.py   # → $PRISM_DATA_DIR/prompt-only (SHA-verified)
+uv run python scripts/check_dataset.py --dataset-dir $PRISM_DATA_DIR/prompt-only
+```
+
+Alternatively, generate a fresh dataset under `$PRISM_DATA_DIR/prompt-only/`,
+then clean it (sampling and judge filtering are not bitwise deterministic, so
+a regenerated dataset approximates the released one):
 
 ```bash
 scripts/generate_dataset.sh     # → prompt-only/jsonl/*.jsonl
@@ -26,10 +35,10 @@ precompute copies it into the cache directory and the on-the-fly loader
 picks it up from next to the JSONL files, so both training paths apply it
 automatically (pass `--valid-record-ids` to override).
 
-Each record: `{id, source_dataset, prompt_a, response_a, prompt_b,
-response_b, metadata}` where `prompt_a` is an instruction-rich user prompt
-(IFEval / IF-multi-constraints / UltraChat derivatives), `response_a` the
-target model's answer, and `response_b` the oracle label — the bullet list
+Each record: `{id, source_dataset, prompt, response, retrieval_prompt,
+instruction_set, metadata}` where `prompt` is an instruction-rich user prompt
+(IFEval / IF-multi-constraints / UltraChat derivatives), `response` the
+target model's answer, and `instruction_set` the oracle label — the bullet list
 of instructions the model was given ("prompt-only": labeled from the
 prompt alone). The filter applies rule gates plus an LLM judge and emits a
 `valid_record_ids.json` mask honoured downstream.
@@ -42,7 +51,7 @@ prompt alone). The filter applies rule gates plus an LLM judge and emits a
 # on-the-fly instead: PRISM_ON_THE_FLY=1 recipes/sft_<model>.sh / recipes/grpo_<model>.sh
 ```
 
-Both paths run the frozen target model over `prompt_a + response_a` and
+Both paths run the frozen target model over `prompt + response` and
 take the residual stream at the profile's hook layer for the last ≤128
 response tokens.
 
@@ -86,7 +95,7 @@ recipes/sft_<model>.sh
 The monitor = a linear projection (`hidden → hidden`) mapping frozen
 activations into the target model's own embedding space, prepended as soft
 tokens, plus LoRA (r=32, α=64, 7 proj modules) on the target model, trained
-with cross-entropy to emit `response_b`. `skip_prompt_b=True` — the
+with cross-entropy to emit `instruction_set`. `skip_prompt_b=True` — the
 monitor decodes from activations alone, no text prompt at train time.
 Best checkpoint by val loss.
 

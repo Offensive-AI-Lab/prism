@@ -30,8 +30,8 @@ class PrecomputedActivationDataset(Dataset):
     Each sample returns a dict with:
         - ``activations``: ``{layer_idx: Tensor[N, H]}``
         - ``act_mask``: ``Tensor[N]`` (uint8, 1=valid)
-        - ``record_id``, ``source_dataset``, ``prompt_a``, ``response_a``,
-          ``prompt_b``, ``response_b`` (strings for collate/logging)
+        - ``record_id``, ``source_dataset``, ``prompt``, ``response``,
+          ``retrieval_prompt``, ``instruction_set`` (strings for collate/logging)
         - ``source_id``: int (from source_map)
     """
 
@@ -214,9 +214,10 @@ class PrecomputedActivationDataset(Dataset):
             "record_id": meta.get("record_id", ""),
             "source_dataset": meta.get("source_dataset", "unknown"),
             "source_id": self.source_map.get(meta.get("source_dataset", "unknown"), -1),
-            "prompt_a": meta.get("prompt_a", ""),
-            "response_a": meta.get("response_a", ""),
-            "response_b": meta.get("response_b", ""),
+            # Legacy meta keys (prompt_a/response_a/response_b) still load.
+            "prompt": meta.get("prompt") or meta.get("prompt_a", ""),
+            "response": meta.get("response") or meta.get("response_a", ""),
+            "instruction_set": meta.get("instruction_set") or meta.get("response_b", ""),
         }
 
     @property
@@ -278,7 +279,7 @@ def build_precomputed_collate_fn(
 
     This collate function:
       1. Stacks precomputed activations and masks (already selected, fixed size).
-      2. Tokenizes prompt_b + response_b for the decoder target.
+      2. Tokenizes retrieval_prompt + instruction_set for the decoder target.
       3. Passes through raw text fields for eval logging.
 
     The returned batch dict is compatible with the prism.sft and prism.rl
@@ -328,7 +329,7 @@ def build_precomputed_collate_fn(
             stacked_acts[layer_idx] = torch.stack([sample["activations"][layer_idx] for sample in batch])
         act_masks = torch.stack([sample["act_mask"] for sample in batch])
 
-        # --- Tokenize decoder target (prompt_b + response_b) ---
+        # --- Tokenize decoder target (retrieval_prompt + instruction_set) ---
         chat_ids_list = []
         chat_prefix_ids_list = []
         answer_starts = []
@@ -346,7 +347,7 @@ def build_precomputed_collate_fn(
             full_ids = _apply_template(
                 [
                     {"role": "user", "content": prompt_b_text},
-                    {"role": "assistant", "content": sample["response_b"]},
+                    {"role": "assistant", "content": sample["instruction_set"]},
                 ],
                 add_generation_prompt=False,
             )
@@ -405,13 +406,10 @@ def build_precomputed_collate_fn(
 
             # Raw text for eval logging (both key conventions for compatibility)
             "record_ids": [sample["record_id"] for sample in batch],
-            "prompt_a_texts": [sample["prompt_a"] for sample in batch],
-            "response_a_texts": [sample["response_a"] for sample in batch],
-            "response_b_texts": [sample["response_b"] for sample in batch],
             # prism.sft compat aliases
-            "prompts_a": [sample["prompt_a"] for sample in batch],
-            "responses_a": [sample["response_a"] for sample in batch],
-            "ground_truth_b": [sample["response_b"] for sample in batch],
+            "prompts": [sample["prompt"] for sample in batch],
+            "responses": [sample["response"] for sample in batch],
+            "instruction_sets": [sample["instruction_set"] for sample in batch],
         }
 
     return collate_fn
@@ -421,7 +419,7 @@ def build_onthefly_collate_fn(tokenizer, cfg: dict, source_map: dict):
     """Collate for :class:`prism.activations.records.RecordDataset` — the
     ON-THE-FLY counterpart of :func:`build_precomputed_collate_fn`.
 
-    Emits the tokenised ``prompt_a + response_a`` context the trainer feeds
+    Emits the tokenised ``prompt + response`` context the trainer feeds
     to the resident target model (``prism.sft.model.extract_activations``
     selects the last ``max_act_tokens`` response tokens, exactly like the
     extractor's ``token_position=last``), plus the decoder prefix and the raw
@@ -473,15 +471,15 @@ def build_onthefly_collate_fn(tokenizer, cfg: dict, source_map: dict):
         return ids, mask
 
     def collate_fn(batch: list) -> dict:
-        # --- context for extraction: prompt_a + response_a (right-padded) ---
+        # --- context for extraction: prompt + response (right-padded) ---
         a_ids, a_prompt_lens, a_resp_counts = [], [], []
         for rec in batch:
             prompt_only = _apply_template(
-                [{"role": "user", "content": rec.prompt_a}], add_generation_prompt=True,
+                [{"role": "user", "content": rec.prompt}], add_generation_prompt=True,
             )
             combined = _apply_template(
-                [{"role": "user", "content": rec.prompt_a},
-                 {"role": "assistant", "content": rec.response_a}],
+                [{"role": "user", "content": rec.prompt},
+                 {"role": "assistant", "content": rec.response}],
                 add_generation_prompt=False,
             )
             a_ids.append(torch.tensor(combined, dtype=torch.long))
@@ -509,9 +507,9 @@ def build_onthefly_collate_fn(tokenizer, cfg: dict, source_map: dict):
             "chat_prefix_attention_mask": chat_prefix_attention_mask,
             "source_ids": source_ids,
             "record_ids": [rec.id for rec in batch],
-            "prompts_a": [rec.prompt_a for rec in batch],
-            "responses_a": [rec.response_a for rec in batch],
-            "ground_truth_b": [rec.response_b for rec in batch],
+            "prompts": [rec.prompt for rec in batch],
+            "responses": [rec.response for rec in batch],
+            "instruction_sets": [rec.instruction_set for rec in batch],
         }
 
     return collate_fn

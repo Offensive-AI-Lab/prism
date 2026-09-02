@@ -3,7 +3,7 @@
 Two builders, matching the two loss families:
 
   * build_prefix_embeddings(...)  — once per outer step. Produces the
-    [scaled soft tokens | prompt_b token embeds] prefix that feeds
+    [scaled soft tokens | retrieval_prompt token embeds] prefix that feeds
     `target_model.generate(inputs_embeds=...)`. Used by rollouts and by the
     loss-time forward.
 
@@ -14,7 +14,7 @@ Two builders, matching the two loss families:
 
 The label convention is the same as
 in `prism/sft/train.py`: -100 on the prefix
-positions (soft tokens + prompt_b template), candidate token ids on
+positions (soft tokens + retrieval_prompt template), candidate token ids on
 the response span. The cross-entropy shift inside the model handles the
 +1 offset automatically.
 """
@@ -34,7 +34,7 @@ def build_prefix_embeddings(
     chat_prefix_attention_mask: torch.Tensor,  # [B, P]
     target_model: nn.Module,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    """Concatenate scaled soft tokens + prompt_b token embeds into a single
+    """Concatenate scaled soft tokens + retrieval_prompt token embeds into a single
     `inputs_embeds` prefix per sample, padded to a common length.
 
     Returns:
@@ -97,7 +97,7 @@ def build_full_inputs(
     """Build full-sequence `inputs_embeds` + labels for the loss-time forward.
 
     Sequence layout per sample:
-        [scaled_soft (n_act) | prompt_b template (p_len) | candidate (R)]
+        [scaled_soft (n_act) | retrieval_prompt template (p_len) | candidate (R)]
         └── labels = -100 ───┘└──── labels = -100 ──────┘└─ labels = ids ┘
 
     Returns a dict with:

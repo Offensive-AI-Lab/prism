@@ -134,15 +134,15 @@ def _write_jsonl(path: Path, rows):
 @pytest.fixture
 def dataset_dir(tmp_path):
     rows_a = [
-        {"id": "a1", "source_dataset": "if_eval", "prompt_a": "p1", "response_a": "r1",
-         "prompt_b": "q", "response_b": "- x", "metadata": {"paraphrase_group_id": "g1"}},
-        {"id": "a2", "source_dataset": "if_eval", "prompt_a": "p2", "response_a": "r2",
-         "prompt_b": "q", "response_b": "- y", "metadata": {"paraphrase_group_id": "g1"}},
-        {"id": "bad", "source_dataset": "if_eval", "prompt_a": "", "response_a": "r"},   # no prompt
-        {"id": "nolabel", "source_dataset": "if_eval", "prompt_a": "p", "response_a": "r"},  # no response_b
+        {"id": "a1", "source_dataset": "if_eval", "prompt": "p1", "response": "r1",
+         "retrieval_prompt": "q", "instruction_set": "- x", "metadata": {"paraphrase_group_id": "g1"}},
+        {"id": "a2", "source_dataset": "if_eval", "prompt": "p2", "response": "r2",
+         "retrieval_prompt": "q", "instruction_set": "- y", "metadata": {"paraphrase_group_id": "g1"}},
+        {"id": "bad", "source_dataset": "if_eval", "prompt": "", "response": "r"},   # no prompt
+        {"id": "nolabel", "source_dataset": "if_eval", "prompt": "p", "response": "r"},  # no instruction_set
     ]
-    rows_b = [{"id": f"b{i}", "source_dataset": "ultrachat", "prompt_a": f"p{i}", "response_a": f"r{i}",
-               "prompt_b": "q", "response_b": "- z"} for i in range(30)]
+    rows_b = [{"id": f"b{i}", "source_dataset": "ultrachat", "prompt": f"p{i}", "response": f"r{i}",
+               "retrieval_prompt": "q", "instruction_set": "- z"} for i in range(30)]
     _write_jsonl(tmp_path / "jsonl" / "ds_a.jsonl", rows_a)
     _write_jsonl(tmp_path / "jsonl" / "ds_b.jsonl", rows_b)
     (tmp_path / "valid_record_ids.json").write_text(json.dumps(["a1", "a2"] + [f"b{i}" for i in range(20)]))
@@ -155,8 +155,8 @@ def test_load_records_filter_and_source_map(dataset_dir):
     assert [r.id for r in recs[:2]] == ["a1", "a2"] and len(recs) == 32
     assert smap == {"if_eval": 0, "ultrachat": 1}
     assert recs[0].paraphrase_group_id == "g1" and recs[2].paraphrase_group_id is None
-    recs_pre, _ = load_records(paths, require_response_b=False)
-    assert len(recs_pre) == 33  # extractor semantics: response_b optional
+    recs_pre, _ = load_records(paths, require_instruction_set=False)
+    assert len(recs_pre) == 33  # extractor semantics: instruction_set optional
 
 
 def test_load_records_missing_file_raises(tmp_path):
@@ -171,7 +171,7 @@ def test_valid_ids_autodetect_and_mask(dataset_dir):
     kept = apply_valid_ids(recs, dataset_dir / "valid_record_ids.json")
     assert [r.id for r in kept] == [f"b{i}" for i in range(20)]
     with pytest.raises(ValueError):
-        apply_valid_ids([Record("zzz", "s", "p", "r", "q", "b")], dataset_dir / "valid_record_ids.json")
+        apply_valid_ids([Record("zzz", "s", "p", "r", "b")], dataset_dir / "valid_record_ids.json")
 
 
 def test_load_split_records_uses_split_keys(dataset_dir):
@@ -181,14 +181,14 @@ def test_load_split_records_uses_split_keys(dataset_dir):
     tr, va, te, smap = load_split_records(cfg)          # auto-detected mask → 22 records
     assert len(tr) + len(va) + len(te) == 22
     # cache order of operations: split the FULL population (extractor filter,
-    # response_b optional), then mask each split, then drop label-less records
-    full, _ = load_records(paths, require_response_b=False)
+    # instruction_set optional), then mask each split, then drop label-less records
+    full, _ = load_records(paths, require_instruction_set=False)
     assert len(full) == 33
     ref = split_mod.split_records(full, 0.1, 0.1, 42, None)
     valid = set(json.loads((dataset_dir / "valid_record_ids.json").read_text()))
-    ref = [[r for r in p if r.id in valid and r.response_b] for p in ref]
+    ref = [[r for r in p if r.id in valid and r.instruction_set] for p in ref]
     assert [[r.id for r in p] for p in (tr, va, te)] == [[r.id for r in p] for p in ref]
-    tr2, va2, te2, _ = load_split_records(cfg, "none")   # mask disabled → only response_b filter
+    tr2, va2, te2, _ = load_split_records(cfg, "none")   # mask disabled → only instruction_set filter
     assert len(tr2) + len(va2) + len(te2) == 32
     ds = RecordDataset(tr, smap)
     assert ds.record_ids() == [r.id for r in tr] and ds[0] is tr[0]
@@ -197,7 +197,7 @@ def test_load_split_records_uses_split_keys(dataset_dir):
 # ── 3. sampler fast path ─────────────────────────────────────────────────────
 def test_enumerate_record_ids_fast_path(tmp_path):
     from prism.rl.sampler import enumerate_record_ids
-    ds = RecordDataset([Record(f"id{i}", "s", "p", "r", "q", "b") for i in range(5)], {"s": 0})
+    ds = RecordDataset([Record(f"id{i}", "s", "p", "r", "b") for i in range(5)], {"s": 0})
     cache = tmp_path / "never_written.json"
     assert enumerate_record_ids(ds, cache_path=cache) == [f"id{i}" for i in range(5)]
     assert not cache.exists()
@@ -217,16 +217,16 @@ def test_onthefly_collate_contract(monkeypatch):
     from prism.activations import build_onthefly_collate_fn
     cfg = {"max_act_tokens": 4, "max_target_len": 64, "skip_prompt_b": True}
     recs = [
-        Record("r1", "if_eval", "one two", "a b c d e f", "q", "- gt1"),
-        Record("r2", "ultrachat", "one two three four", "a b", "q", "- gt2"),
+        Record("r1", "if_eval", "one two", "a b c d e f", "- gt1"),
+        Record("r2", "ultrachat", "one two three four", "a b", "- gt2"),
     ]
     batch = build_onthefly_collate_fn(_FakeTokenizer(), cfg, {"if_eval": 0, "ultrachat": 1})(recs)
     for k in ("a_input_ids", "a_attention_mask", "a_prompt_only_lens", "a_response_token_counts",
               "chat_prefix_input_ids", "chat_prefix_attention_mask", "source_ids",
-              "record_ids", "prompts_a", "responses_a", "ground_truth_b"):
+              "record_ids", "prompts", "responses", "instruction_sets"):
         assert k in batch, k
     assert "precomputed_acts" not in batch and "act_masks" not in batch
-    assert batch["record_ids"] == ["r1", "r2"] and batch["ground_truth_b"] == ["- gt1", "- gt2"]
+    assert batch["record_ids"] == ["r1", "r2"] and batch["instruction_sets"] == ["- gt1", "- gt2"]
     assert batch["source_ids"].tolist() == [0, 1]
     B, W = batch["a_input_ids"].shape
     assert B == 2 and batch["a_attention_mask"].shape == (B, W)

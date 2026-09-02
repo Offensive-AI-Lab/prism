@@ -2,11 +2,11 @@
 train.py — Activation-conditioned decoder finetuning.
 
 Pipeline per batch:
-  1. Disable LoRA → run the target model on prompt_a+response_a → extract activations at the hook layer
+  1. Disable LoRA → run the target model on prompt+response → extract activations at the hook layer
   2. Project activations into the decoder embedding space (soft tokens)
   3. Run projection layer → norm-match to decoder embedding scale
-  4. Enable LoRA → build decoder input: [soft_tokens | prompt_b embeds | response_b embeds]
-  5. Teacher-force response_b with CE loss, backprop through LoRA + projection
+  4. Enable LoRA → build decoder input: [soft_tokens | retrieval_prompt embeds | instruction_set embeds]
+  5. Teacher-force instruction_set with CE loss, backprop through LoRA + projection
 
 Run:
     python -m prism.sft.train
@@ -135,11 +135,11 @@ def train_step(
         chat_emb_b = chat_embeds[b, :chat_len_b]  # [chat_len, D]
         chat_ids_b = chat_ids[b, :chat_len_b]     # [chat_len]
 
-        # Concatenate: [soft_tokens | prompt_b + response_b]
+        # Concatenate: [soft_tokens | retrieval_prompt + instruction_set]
         seq_emb = torch.cat([soft_b, chat_emb_b], dim=0)
         seq_mask = torch.ones(seq_emb.size(0), device=device, dtype=chat_mask.dtype)
 
-        # Labels: -100 on soft tokens and prompt_b, actual IDs on response_b
+        # Labels: -100 on soft tokens and retrieval_prompt, actual IDs on instruction_set
         seq_labels = torch.full(
             (seq_emb.size(0),), -100, device=device, dtype=torch.long
         )
@@ -282,9 +282,9 @@ def validate(
         chat_lengths = batch["chat_lengths"]
         answer_starts = batch["answer_starts"]
         source_ids = batch["source_ids"]
-        ground_truths = batch["ground_truth_b"]
-        prompts_a = batch["prompts_a"]
-        responses_a = batch["responses_a"]
+        ground_truths = batch["instruction_sets"]
+        prompts = batch["prompts"]
+        responses = batch["responses"]
         B = chat_ids.shape[0]
 
         chat_embeds = target_model.get_input_embeddings()(chat_ids)
@@ -401,8 +401,8 @@ def validate(
                 if samples_logged < log_sample_count:
                     table_rows.append((
                         inv_source_map.get(int(source_ids[b].item()), "unknown"),
-                        prompts_a[b][:300],
-                        responses_a[b][:500],
+                        prompts[b][:300],
+                        responses[b][:500],
                         ground_truths[b][:500],
                         gen_texts[b][:500],
                     ))
@@ -434,7 +434,7 @@ def validate(
 
     # ── Build wandb sample table (with BERTScore column if available) ─
     has_bs = len(per_sample_f1) >= len(table_rows)
-    columns = ["source", "prompt_a", "response_a", "ground_truth", "generated"]
+    columns = ["source", "prompt", "response", "ground_truth", "generated"]
     if has_bs:
         columns.append("bert_score_f1")
     sample_table = wandb.Table(columns=columns)

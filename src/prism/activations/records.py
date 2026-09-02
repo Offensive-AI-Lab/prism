@@ -28,10 +28,9 @@ VALID_IDS_FILENAME = "valid_record_ids.json"
 class Record:
     id: str
     source_dataset: str
-    prompt_a: str
-    response_a: str
-    prompt_b: str
-    response_b: str
+    prompt: str
+    response: str
+    instruction_set: str
     paraphrase_group_id: Optional[str] = None
 
     # Duck-type as a mapping for the split helpers (they use ``rec.get``).
@@ -39,12 +38,12 @@ class Record:
         return getattr(self, key, default)
 
 
-def load_records(paths: Sequence[str], require_response_b: bool = True) -> Tuple[List[Record], dict]:
+def load_records(paths: Sequence[str], require_instruction_set: bool = True) -> Tuple[List[Record], dict]:
     """Load JSONL oracle records in the given file order.
 
-    Mirrors the extractor's record filter (``prompt_a`` and ``response_a``
+    Mirrors the extractor's record filter (``prompt`` and ``response``
     required; ``metadata.paraphrase_group_id`` carried for the split).
-    Trainers additionally need ``response_b`` (the ground-truth instruction
+    Trainers additionally need ``instruction_set`` (the ground-truth instruction
     list), so it is required by default.
 
     Returns ``(records, source_map)`` with ``source_map`` = ``{source_dataset:
@@ -68,22 +67,22 @@ def load_records(paths: Sequence[str], require_response_b: bool = True) -> Tuple
                     obj = json.loads(line)
                 except json.JSONDecodeError:
                     continue
-                prompt_a = obj.get("prompt_a", "")
-                response_a = obj.get("response_a", "")
-                response_b = obj.get("response_b", "")
-                if not (prompt_a and response_a):
+                # Legacy field names (prompt_a/response_a/response_b) still load.
+                prompt = obj.get("prompt") or obj.get("prompt_a", "")
+                response = obj.get("response") or obj.get("response_a", "")
+                instruction_set = obj.get("instruction_set") or obj.get("response_b", "")
+                if not (prompt and response):
                     continue
-                if require_response_b and not response_b:
+                if require_instruction_set and not instruction_set:
                     continue
                 metadata = obj.get("metadata")
                 gid = metadata.get("paraphrase_group_id") if isinstance(metadata, dict) else None
                 rec = Record(
                     id=obj.get("id", ""),
                     source_dataset=obj.get("source_dataset", "unknown"),
-                    prompt_a=prompt_a,
-                    response_a=response_a,
-                    prompt_b=obj.get("prompt_b", ""),
-                    response_b=response_b,
+                    prompt=prompt,
+                    response=response,
+                    instruction_set=instruction_set,
                     paraphrase_group_id=gid,
                 )
                 records.append(rec)
@@ -163,7 +162,7 @@ def load_split_records(cfg: dict, valid_ids_path=None):
     cache's order of operations.
 
     The extractor splits the *full* record list (its filter needs only
-    ``prompt_a``/``response_a``) and the ``valid_record_ids.json`` mask is
+    ``prompt``/``response``) and the ``valid_record_ids.json`` mask is
     applied later, at load time, per split. Doing the same here — split the
     unmasked population, then mask each split, then drop label-less
     records — is what makes on-the-fly train/val membership identical to
@@ -174,7 +173,7 @@ def load_split_records(cfg: dict, valid_ids_path=None):
     Returns ``(train, val, test, source_map)`` as lists of :class:`Record`.
     """
     paths = list(cfg["dataset_paths"])
-    records, source_map = load_records(paths, require_response_b=False)
+    records, source_map = load_records(paths, require_instruction_set=False)
     train, val, test = split_dataset(records, cfg)
     logger.info(
         "Split (seed=%s val=%.2f test=%.2f stratify=%s): train=%s val=%s test=%s",
@@ -203,8 +202,8 @@ def load_split_records(cfg: dict, valid_ids_path=None):
     # Trainers need the label; the extractor keeps label-less records in the
     # cache but the training loaders never see them.
     n_before = len(train) + len(val) + len(test)
-    train, val, test = ([r for r in part if r.response_b] for part in (train, val, test))
+    train, val, test = ([r for r in part if r.instruction_set] for part in (train, val, test))
     dropped = n_before - (len(train) + len(val) + len(test))
     if dropped:
-        logger.info("Dropped %d records without response_b", dropped)
+        logger.info("Dropped %d records without instruction_set", dropped)
     return train, val, test, source_map

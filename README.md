@@ -24,9 +24,7 @@ code, benchmark data, released checkpoints, and published results are in
 | GRPO | `src/prism/rl/` |
 | Reproduction recipes | `recipes/` |
 
-The training data are generated locally and are not distributed in this
-repository. See [the data card](docs/DATA_CARD.md) before redistributing derived
-data.
+The released training dataset is on Hugging Face (`Offensive-AI-Lab/prism-training-dataset`); `uv run python scripts/download_dataset.py` fetches and verifies it, and the generation scripts can build a fresh dataset instead.
 
 ## Requirements
 

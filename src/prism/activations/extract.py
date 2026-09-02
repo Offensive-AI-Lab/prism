@@ -81,11 +81,12 @@ def _load_records(dataset_paths: List[str]):
                 except json.JSONDecodeError:
                     continue
 
-                prompt_a = obj.get("prompt_a", "")
-                response_a = obj.get("response_a", "")
-                # response_b is optional — pretraining-style records may omit it
-                response_b = obj.get("response_b", "")
-                if not all([prompt_a, response_a]):
+                # Legacy field names (prompt_a/response_a/response_b) still load.
+                prompt = obj.get("prompt") or obj.get("prompt_a", "")
+                response = obj.get("response") or obj.get("response_a", "")
+                # instruction_set is optional — pretraining-style records may omit it
+                instruction_set = obj.get("instruction_set") or obj.get("response_b", "")
+                if not all([prompt, response]):
                     continue
 
                 # Paraphrase provenance: paraphrases of the same base example
@@ -98,9 +99,9 @@ def _load_records(dataset_paths: List[str]):
                 records.append({
                     "id": obj.get("id", ""),
                     "source_dataset": obj.get("source_dataset", "unknown"),
-                    "prompt_a": prompt_a,
-                    "response_a": response_a,
-                    "response_b": response_b,
+                    "prompt": prompt,
+                    "response": response,
+                    "instruction_set": instruction_set,
                     "paraphrase_group_id": paraphrase_group_id,
                 })
                 source_names.add(records[-1]["source_dataset"])
@@ -233,19 +234,19 @@ def _apply_chat_template(tokenizer, messages, add_generation_prompt: bool):
 
 
 def _tokenize_context(tokenizer, record: dict) -> Tuple[List[int], int]:
-    """Tokenize prompt_a + response_a and return (token_ids, response_start)."""
+    """Tokenize prompt + response and return (token_ids, response_start)."""
     from prism.target_models import get_profile, wrap_messages
     _profile = get_profile()
     prompt_only_ids = _apply_chat_template(
         tokenizer,
-        wrap_messages([{"role": "user", "content": record["prompt_a"]}], _profile),
+        wrap_messages([{"role": "user", "content": record["prompt"]}], _profile),
         add_generation_prompt=True,
     )
     full_ids = _apply_chat_template(
         tokenizer,
         wrap_messages([
-            {"role": "user", "content": record["prompt_a"]},
-            {"role": "assistant", "content": record["response_a"]},
+            {"role": "user", "content": record["prompt"]},
+            {"role": "assistant", "content": record["response"]},
         ], _profile),
         add_generation_prompt=False,
     )
@@ -500,9 +501,9 @@ def _extract_batch_bulk(
         meta_list.append({
             "record_id": record["id"],
             "source_dataset": record["source_dataset"],
-            "prompt_a": record["prompt_a"],
-            "response_a": record["response_a"],
-            "response_b": record["response_b"],
+            "prompt": record["prompt"],
+            "response": record["response"],
+            "instruction_set": record["instruction_set"],
             "response_a_total_tokens": resp_len,
             "selected_token_count": sel_end - sel_start,
             "selected_range": [sel_start, sel_end],
