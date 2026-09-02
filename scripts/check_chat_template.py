@@ -14,7 +14,8 @@ target model BEFORE any GPU job is submitted:
      suppresses the ~530-token default system prompt (short prefix) and keeps the
      prefix property.
 
-Run:  uv run python scripts/check_chat_template.py
+Run:  uv run python scripts/check_chat_template.py [profile ...]
+      (profiles: qwen3.5-9b, gemma2-9b, ministral3-8b; default: all)
 Exit code 0 = all good.
 """
 

@@ -10,18 +10,19 @@ Only the *scalar* reward and length_penalty depend on the reward knobs
 those knobs change, we don't need to re-call the LLM judge — we can
 recompute the scalar fields from the cached lists in seconds.
 
-Reads ``judge_scores.jsonl``, recomputes ``reward``, ``length_penalty``,
+Reads ``judge_traces.jsonl`` (written by ``prism.rl.train`` next to its
+checkpoints), recomputes ``reward``, ``length_penalty``,
 ``mean_instruction_score``, and ``mean_hallucination_score`` for each row
-under the current ``RL_CONFIG`` knobs, and atomically writes the
-file back. The per-bullet lists, gt_instructions, itm_bullets, and
-sft_report are preserved unchanged.
+under the current ``RL_CONFIG`` knobs, and atomically writes the file back.
+All other fields are preserved unchanged. Rows may carry the score fields at
+the top level (judge traces) or under a ``judge`` sub-dict.
 
 Run:
-    uv run python -m prism.rl.rederive_rewards --in judge_scores.jsonl
+    uv run python -m prism.rl.rederive_rewards --in judge_traces.jsonl
     uv run python -m prism.rl.rederive_rewards \\
-        --in judge_scores.jsonl --out judge_scores.new.jsonl
+        --in judge_traces.jsonl --out judge_traces.new.jsonl
     uv run python -m prism.rl.rederive_rewards \\
-        --in judge_scores.jsonl --w-inst 0.7 --w-halluc 0.3 --no-length-penalty
+        --in judge_traces.jsonl --w-inst 0.7 --w-halluc 0.3 --no-length-penalty
 """
 
 from __future__ import annotations
@@ -44,11 +45,12 @@ def _mean(xs: list[float]) -> float:
 
 
 def _rederive_one(row: dict, knobs: dict) -> dict:
-    """Recompute scalar reward fields on a single judge_scores row.
+    """Recompute the scalar reward fields on a single row, in place.
 
-    Mutates the row's ``judge`` sub-dict in place and returns the row.
+    Score fields live either at the top level (judge_traces.jsonl) or under
+    a ``judge`` sub-dict; both shapes are handled.
     """
-    j = row["judge"]
+    j = row.get("judge") or row
     inst_scores = list(j.get("instruction_scores") or [])
     halluc_scores = list(j.get("hallucination_scores") or [])
     n_gt = len(row.get("gt_instructions") or [])
@@ -78,7 +80,7 @@ def _rederive_one(row: dict, knobs: dict) -> dict:
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--in", dest="in_path", type=str, required=True,
-                   help="judge_scores.jsonl (from score_judge.py)")
+                   help="judge_traces.jsonl written by prism.rl.train")
     p.add_argument("--out", type=str, default=None,
                    help="Output path (default: overwrite --in atomically)")
     p.add_argument("--w-inst", type=float, default=None)
@@ -111,17 +113,17 @@ def main():
 
     # Sanity: rows must carry the current-spec fields. If they don't, we
     # cannot rederive — refuse rather than silently produce wrong rewards.
-    sample = rows[0]["judge"] if rows else {}
+    sample = (rows[0].get("judge") or rows[0]) if rows else {}
     if "hallucination_scores" not in sample:
         raise SystemExit(
-            f"{in_path} is missing per-bullet `hallucination_scores`. "
-            "It was produced under the old judge spec — re-run score_judge.py first."
+            f"{in_path} is missing per-bullet `hallucination_scores` — "
+            "it was not produced by this trainer's judge."
         )
 
-    rewards_before = [r["judge"].get("reward", 0.0) for r in rows]
+    rewards_before = [(r.get("judge") or r).get("reward", 0.0) for r in rows]
     for r in rows:
         _rederive_one(r, knobs)
-    rewards_after = [r["judge"]["reward"] for r in rows]
+    rewards_after = [(r.get("judge") or r)["reward"] for r in rows]
 
     out_path = Path(args.out) if args.out else in_path
     # Atomic overwrite: write to .tmp, fsync, rename.

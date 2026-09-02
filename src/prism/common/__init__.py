@@ -1,1 +1,1 @@
-"""Shared utilities: env loading, LR schedules, logging setup."""
+"""Shared utilities: env loading, LR schedules."""
