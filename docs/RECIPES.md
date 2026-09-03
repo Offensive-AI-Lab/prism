@@ -27,7 +27,7 @@ runs reproduces the published files tensor-for-tensor.
 | reward weights inst / halluc | — | 1.0 / 0.4 | same | same |
 | judge | — | gemma4-31B-it (`google/gemma-4-31B-it`, reasoning off) | same | same |
 | step cap | — | 20 000 | 20 000 | 20 000 |
-| data | the oracle dataset, **precomputed activation cache** (the default path; on-the-fly extraction is supported but was not used for any reported run) | same | same | same |
+| data | the released training dataset, **precomputed activation cache** (the default path; on-the-fly extraction is supported but was not used for the reported runs) | same | same | same |
 
 † sweep-sampled values, pinned as exact literals in `recipes/sft_qwen3.5-9b.sh`.
 

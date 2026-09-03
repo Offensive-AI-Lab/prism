@@ -1,206 +1,163 @@
 # PRISM
 
-Training code for [PRISM: Recovering Instruction Sets from Language Model
-Activations](https://arxiv.org/abs/2606.09563), accepted to the EMNLP 2026 Main
-Conference.
+PRISM reads a language model's activations and produces a list of the
+instructions represented in them. The reports can reveal ordinary requests,
+behavioral constraints, hidden objectives, and injected instructions.
 
-PRISM decodes the instructions represented in a language model's hidden states.
-Given residual-stream activations from a frozen target model, a learned
-projection and LoRA-adapted decoder produce an instruction report. Training has
-two stages: supervised fine-tuning (SFT) on generated oracle reports, followed
-by judge-guided group relative policy optimization (GRPO).
+Code for [PRISM: Recovering Instruction Sets from Language Model
+Activations](https://arxiv.org/abs/2606.09563), accepted to the EMNLP 2026
+Main Conference. This repository includes the local demo and training pipeline;
+[prism-eval](https://github.com/Offensive-AI-Lab/prism-eval) contains the
+evaluation code, benchmark, and results.
 
-This repository contains the data-generation and training pipeline. Evaluation
-code, benchmark data, released checkpoints, and published results are in
-[`Offensive-AI-Lab/prism-eval`](https://github.com/Offensive-AI-Lab/prism-eval).
+## Try PRISM
 
-## Repository scope
-
-| Component | Location |
-|---|---|
-| Oracle data generation and filtering | `src/prism/datagen/` |
-| Activation extraction and sharding | `src/prism/activations/` |
-| SFT | `src/prism/sft/` |
-| GRPO | `src/prism/rl/` |
-| Reproduction recipes | `recipes/` |
-
-The released training dataset is on Hugging Face (`Offensive-AI-Lab/prism-training-dataset`); `uv run python scripts/download_dataset.py` fetches and verifies it, and the generation scripts can build a fresh dataset instead.
-
-## Requirements
-
-- Linux or another environment capable of running the Bash recipes
-- Python 3.13 and [uv](https://docs.astral.sh/uv/)
-- A CUDA GPU for activation extraction and training
-- Access to the target model weights on Hugging Face
-- An OpenAI-compatible judge endpoint for data filtering and GRPO
-
-The released runs used a single GPU with approximately 95 GB of memory. The
-judge was served separately with vLLM. Hardware and runtime notes are collected
-in [the pipeline guide](docs/PIPELINE.md).
-
-## Installation
+The demo runs on your own GPU. Use Python 3.13 or later and
+[uv](https://docs.astral.sh/uv/). We recommend a CUDA GPU with 24 GB of memory
+available. No judge endpoint is needed.
 
 ```bash
 git clone https://github.com/Offensive-AI-Lab/prism.git
 cd prism
-uv sync
-cp .env.example .env
+uv sync --extra demo
+uv run python demo/app.py
 ```
 
-Set the storage roots and credentials in `.env`:
+Open [localhost:7860](http://127.0.0.1:7860), choose an example or enter your own
+prompt, and generate a response. Then ask PRISM to recover the instructions
+from that response's activations.
 
-```dotenv
-PRISM_DATA_DIR=/path/to/prism-data
-PRISM_CKPT_DIR=/path/to/prism-checkpoints
-HF_TOKEN=
-PRISM_JUDGE_BASE_URL=http://localhost:8088/v1
-PRISM_JUDGE_MODEL=gemma4-31B-it
-PRISM_JUDGE_API_KEY=not-needed
-```
+On first launch, the demo downloads Qwen3.5-9B (about 18 GB) and the two Qwen
+PRISM checkpoints (about 266 MB each). The target model uses the Hugging Face
+cache; PRISM checkpoints go in `./checkpoints`. Change the latter with
+`--checkpoint-dir`.
 
-Values already present in the environment take precedence over `.env`.
+The default mode uses the final PRISM checkpoint. You can also select
+**PRISM w/o RL** or compare with LatentQA and Activation Oracles. The first
+comparison downloads about 580 MB of additional adapters. Checkpoint and adapter
+downloads are verified by SHA-256. Prompts and responses stay on your machine.
 
-Optional dependency groups are `datagen` (local vLLM generation),
-`bertscore`, and `dev`. Install one with, for example,
-`uv sync --extra datagen`.
+## Checkpoints
 
-## Training pipeline
+Each checkpoint contains a learned projection and LoRA adapters, not the target
+model's weights.
 
-The released checkpoints were produced by the following sequence:
+| Checkpoint | Target model | Hook layer | Training |
+|---|---|---:|---|
+| [PRISM — Qwen](https://huggingface.co/Offensive-AI-Lab/prism-qwen3.5-9b-grpo) | `Qwen/Qwen3.5-9B` | 16 | SFT + GRPO; main paper result |
+| [PRISM w/o RL — Qwen](https://huggingface.co/Offensive-AI-Lab/prism-qwen3.5-9b-sft) | `Qwen/Qwen3.5-9B` | 16 | SFT only |
+| [PRISM — Gemma](https://huggingface.co/Offensive-AI-Lab/prism-gemma-2-9b-it-grpo) | `google/gemma-2-9b-it` | 21 | SFT + GRPO |
+| [PRISM — Ministral](https://huggingface.co/Offensive-AI-Lab/prism-ministral-3-8b-grpo) | `mistralai/Ministral-3-8B-Instruct-2512-BF16` | 17 | SFT + GRPO |
 
-1. Generate oracle examples with a target model.
-2. Filter the generated labels and write a valid-record mask.
-3. Extract and shard response-token activations.
-4. Train the projection and LoRA parameters with SFT.
-5. Continue training with judge-guided GRPO.
-6. Export an inference-only checkpoint for `prism-eval`.
+The released Qwen GRPO checkpoint is the model reported in the paper.
+For benchmark commands, see [prism-eval](https://github.com/Offensive-AI-Lab/prism-eval).
 
-Activation extraction is normally invoked by the SFT and GRPO recipes. The
-cache is reused when the target-model profile, hook layer, and output directory
-match.
+## How it works
 
-Both trainers can also extract activations on the fly from the oracle JSONL
-files (`PRISM_ON_THE_FLY=1` before a recipe, or `--dataset-paths` on the
-module) using the target model that is already resident for training. The main
-additional model-compute cost is one no-grad forward up to the hook layer per
-batch. The precomputed cache remains the higher-throughput path and was used
-for all reported results and released checkpoints. See
-[docs/PIPELINE.md](docs/PIPELINE.md) §2.
+PRISM takes residual-stream activations from up to the last 128 response tokens at a
+selected layer of the frozen target model. A learned projection maps those
+activations into input embeddings. The same model, with LoRA adapters enabled,
+decodes them into an instruction report.
 
-### 1. Generate and filter oracle data
+Training has three stages:
 
-Serve the target model at the endpoint configured by `DATAGEN_BASE_URL` and
-`DATAGEN_MODEL`, then run:
+1. Prepare prompts, target-model responses, and instruction-set labels.
+2. Train the projection and LoRA adapters with supervised fine-tuning (SFT).
+3. Refine the reports with judge-guided group relative policy optimization (GRPO).
+
+## Training
+
+The Bash recipes require Linux or a compatible environment. The released
+training runs used a GPU with approximately 95 GB of memory and a separate
+vLLM server for the judge. These are training requirements, not demo requirements.
+
+Install the training environment and choose storage directories:
 
 ```bash
-scripts/generate_dataset.sh
-scripts/clean_dataset.sh
+uv sync
+cp .env.example .env
+export PRISM_DATA_DIR=/path/to/prism-data
+export PRISM_CKPT_DIR=/path/to/prism-checkpoints
 ```
 
-The expected output is
-`$PRISM_DATA_DIR/prompt-only/jsonl/*.jsonl` plus
-`$PRISM_DATA_DIR/prompt-only/valid_record_ids.json`.
+The recipes also read these settings from `.env`. Exporting them makes them
+available to the standalone download and export commands below.
 
-### 2. Run SFT
+### 1. Prepare the data
+
+The [training dataset](https://huggingface.co/datasets/Offensive-AI-Lab/prism-training-dataset)
+contains prompts from IFEval, IF Multi-Constraints, and UltraChat, paired with
+target-model responses and generated instruction lists. It is currently private
+pending release review; downloading it requires an authorized Hugging Face
+account. Set `HF_TOKEN` in your shell if needed.
+
+```bash
+uv run python scripts/download_dataset.py
+uv run python scripts/check_dataset.py --dataset-dir "$PRISM_DATA_DIR/prompt-only"
+```
+
+To generate and filter a new dataset instead, see the
+[pipeline guide](docs/PIPELINE.md). Sources, fields, and filtering are described
+in the [data card](docs/DATA_CARD.md). IFEval is a training source, so it should
+not be used as an independent evaluation benchmark for these checkpoints.
+
+### 2. Train with SFT
 
 ```bash
 recipes/sft_qwen3.5-9b.sh
 ```
 
-Equivalent recipes are provided for Gemma 2 9B and Ministral 3 8B. Each recipe
-loads the matching target-model profile from `src/prism/target_models.py`,
-builds or reuses the activation cache, and writes checkpoints below
-`$PRISM_CKPT_DIR`.
+The recipe extracts and caches response-token activations on first use.
+Both SFT and GRPO also support on-the-fly extraction: set `PRISM_ON_THE_FLY=1`
+before running a recipe. This avoids the cache but adds a no-gradient
+activation-extraction forward per batch. The released runs used the cache;
+see the [pipeline guide](docs/PIPELINE.md#2-activations--precomputed-cache-default-or-on-the-fly)
+for the differences between the two paths.
 
-### 3. Run GRPO
+### 3. Refine with GRPO and export
 
-Start the judge server in a separate process and then run the matching GRPO
-recipe:
+Configure an OpenAI-compatible judge endpoint in `.env`:
+
+```dotenv
+PRISM_JUDGE_BASE_URL=http://localhost:8088/v1
+PRISM_JUDGE_MODEL=gemma4-31B-it
+PRISM_JUDGE_API_KEY=not-needed
+```
+
+The released runs used `google/gemma-4-31B-it` with reasoning disabled.
+To serve it yourself, run `scripts/serve_judge.sh` in a separate terminal on
+the judge's GPU host, then use that host's address above.
+
+Run GRPO from the SFT checkpoint and export the resulting model:
 
 ```bash
-scripts/serve_judge.sh
 recipes/grpo_qwen3.5-9b.sh
-```
-
-GRPO starts from the SFT checkpoint for the same target model. The exact
-released hyperparameters are recorded in [docs/RECIPES.md](docs/RECIPES.md);
-the Python module defaults are intended for development and are not the
-reproduction configuration.
-
-### 4. Export a checkpoint
-
-```bash
 uv run python scripts/export_checkpoint.py \
-  "$PRISM_CKPT_DIR/<run>/best.pt"
+  "$PRISM_CKPT_DIR/grpo-qwen3.5-9b-L16/best.pt"
 ```
 
-The export removes optimizer and scheduler state and writes the format consumed
-by `prism-eval`. The schema and invariants are documented in
-[docs/CHECKPOINT_FORMAT.md](docs/CHECKPOINT_FORMAT.md).
+The export removes training state and produces a checkpoint for `prism-eval`.
+[Released recipes](docs/RECIPES.md) lists the hyperparameters and corresponding
+Gemma and Ministral commands. The recipes, rather than the Python module
+defaults, define the released training runs.
 
-### Smoke runs
-
-Set `SMOKE=1` before an SFT or GRPO recipe to use a small data slice and separate
-output directories:
-
-```bash
-SMOKE=1 recipes/sft_qwen3.5-9b.sh
-SMOKE=1 recipes/grpo_qwen3.5-9b.sh
-```
-
-Smoke runs check configuration, model loading, activation extraction, and
-checkpoint writing. They are not suitable for comparing metrics.
-
-## Released checkpoints
-
-| Checkpoint | Target model | Hook layer | Training |
-|---|---|---:|---|
-| `prism-qwen3.5-9b-sft.pt` | `Qwen/Qwen3.5-9B` | 16 | SFT |
-| `prism-qwen3.5-9b-grpo.pt` | `Qwen/Qwen3.5-9B` | 16 | SFT + GRPO |
-| `prism-gemma-2-9b-it-grpo.pt` | `google/gemma-2-9b-it` | 21 | SFT + GRPO |
-| `prism-ministral-3-8b-grpo.pt` | `mistralai/Ministral-3-8B-Instruct-2512-BF16` | 17 | SFT + GRPO |
-
-Download and evaluate these files through
-[`prism-eval`](https://github.com/Offensive-AI-Lab/prism-eval). The Qwen GRPO
-checkpoint is the primary model reported in the paper.
+For a small end-to-end training check, run the SFT and GRPO recipes with
+`SMOKE=1`. They use separate checkpoint directories.
 
 ## Adding a target model
 
-Target-specific behavior is defined in `src/prism/target_models.py`. A new
-profile specifies the Hugging Face model ID, hook layer, model loader, attention
-implementation, LoRA scope, and chat-template adjustments. Before training:
+Add a profile in `src/prism/target_models.py` defining the model ID, hook layer,
+loader, attention backend, and LoRA scope. Check its chat template with
+`uv run python scripts/check_chat_template.py <profile-name>`, then add
+matching SFT and GRPO recipes and an exporter model tag.
 
-```bash
-uv run python scripts/check_chat_template.py <profile-name>
-```
+## Further reading
 
-Then add SFT and GRPO recipes based on the closest existing model and update the
-exporter's model-tag mapping. If extraction requires a different batch size or
-attention implementation, update the corresponding profile and recipe helper.
-
-## Reproducibility notes
-
-- Regenerating the oracle dataset does not reproduce the original JSONL files
-  bit for bit. Model sampling, serving order, and judge filtering can change the
-  retained examples.
-- The recipes, rather than the dataclass defaults in the training modules,
-  define the released runs.
-- The released runs trained from the precomputed activation cache;
-  [docs/PIPELINE.md](docs/PIPELINE.md) describes how on-the-fly extraction
-  relates to it.
-- Do not use the released monitors for evaluation on IFEval-derived benchmarks;
-  IFEval is one of the oracle-data sources.
-
-## Documentation
-
-| Document | Contents |
-|---|---|
-| [Pipeline](docs/PIPELINE.md) | End-to-end data, activation, SFT, GRPO, and export flow |
-| [Released recipes](docs/RECIPES.md) | Hyperparameters and checkpoint provenance |
-| [Data card](docs/DATA_CARD.md) | Source datasets, generated labels, and licensing |
-| [Checkpoint format](docs/CHECKPOINT_FORMAT.md) | Training and release checkpoint schemas |
-| [Scoring rubric](docs/RUBRIC.md) | Coverage and hallucination rubric |
-| [Ablations](docs/ABLATIONS.md) | Training-side ablation commands |
+- [Pipeline guide](docs/PIPELINE.md): dataset generation, activation extraction, SFT, GRPO, and export.
+- [Data card](docs/DATA_CARD.md): dataset sources, fields, and filtering.
+- [Released recipes](docs/RECIPES.md): training configurations.
+- [Checkpoint format](docs/CHECKPOINT_FORMAT.md): fields needed by the loaders.
+- [Scoring rubric](docs/RUBRIC.md) and [training ablations](docs/ABLATIONS.md).
 
 ## Citation
 
@@ -218,6 +175,7 @@ attention implementation, update the corresponding profile and recipe helper.
 
 ## License
 
-The code is licensed under the [Apache License 2.0](LICENSE). Generated data may
-also be subject to the licenses and terms of the source datasets and target
-models; see [docs/DATA_CARD.md](docs/DATA_CARD.md).
+Project code is licensed under the [Apache License 2.0](LICENSE). Vendored
+baseline code retains the licenses in [demo/third_party/](demo/third_party/).
+Target models and source datasets retain their own licenses; see the
+[data card](docs/DATA_CARD.md).

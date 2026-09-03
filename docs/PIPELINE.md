@@ -1,23 +1,31 @@
 # Pipeline walkthrough
 
 End-to-end path from raw instruction data to a released PRISM monitor.
-Storage roots come from `.env`: `PRISM_DATA_DIR` (datasets + activation
-shards) and `PRISM_CKPT_DIR` (checkpoints).
+Set `PRISM_DATA_DIR` (datasets and activation shards) and `PRISM_CKPT_DIR`
+(checkpoints) in your shell before running the standalone commands below.
+The training recipes also read these values from `.env`; the dataset
+downloader does not.
 
 ## 0. Serve the target model (data generation only)
 
-Oracle data generation talks to any OpenAI-compatible endpoint serving the
+Training-data generation talks to any OpenAI-compatible endpoint serving the
 target model (default `http://localhost:8089/v1`), e.g.
 `vllm serve Qwen/Qwen3.5-9B --port 8089`.
 
-## 1. Oracle dataset — download the release, or generate your own
+## 1. Training data — download the release, or generate your own
 
-The released records train every recipe directly:
+Use the prepared [training records](https://huggingface.co/datasets/Offensive-AI-Lab/prism-training-dataset)
+with every recipe. The dataset is private pending redistribution review;
+until publication, downloading requires authorized Hugging Face access.
 
 ```bash
 uv run python scripts/download_dataset.py   # → $PRISM_DATA_DIR/prompt-only (SHA-verified)
 uv run python scripts/check_dataset.py --dataset-dir $PRISM_DATA_DIR/prompt-only
 ```
+
+Keep the JSONL files and `valid_record_ids.json` together. The split is computed
+before applying this mask, so removing rejected records from the source files
+would change split membership.
 
 Alternatively, generate a fresh dataset under `$PRISM_DATA_DIR/prompt-only/`,
 then clean it (sampling and judge filtering are not bitwise deterministic, so
@@ -35,12 +43,12 @@ precompute copies it into the cache directory and the on-the-fly loader
 picks it up from next to the JSONL files, so both training paths apply it
 automatically (pass `--valid-record-ids` to override).
 
-Each record: `{id, source_dataset, prompt, response, retrieval_prompt,
-instruction_set, metadata}` where `prompt` is an instruction-rich user prompt
-(IFEval / IF-multi-constraints / UltraChat derivatives), `response` the
-target model's answer, and `instruction_set` the oracle label — the bullet list
-of instructions the model was given ("prompt-only": labeled from the
-prompt alone). The filter applies rule gates plus an LLM judge and emits a
+Each record contains `{id, source_dataset, prompt, response, instruction_set,
+metadata}`. `prompt` is an instruction-rich user request drawn from IFEval,
+IF-multi-constraints, or UltraChat; `response` is the target model's answer;
+and `instruction_set` is the generated list of instructions in `prompt`. The
+fixed request for that list lives in code rather than in every record. The
+filter applies rule gates plus an LLM judge and emits a
 `valid_record_ids.json` mask honoured downstream.
 
 ## 2. Activations — precomputed cache (default) or on-the-fly

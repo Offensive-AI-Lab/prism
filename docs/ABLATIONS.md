@@ -8,9 +8,9 @@ depths.
 
 Protocol:
 
-- Data: cleaned oracle JSONL files with on-the-fly activation extraction. This
-  avoids building a separate activation cache for every layer. The loader
-  applies `valid_record_ids.json` and the standard split function described in
+- Data: cleaned instruction-labelled JSONL files with on-the-fly activation
+  extraction. This avoids building a separate activation cache for every layer.
+  The loader applies `valid_record_ids.json` and the standard split function described in
   `docs/PIPELINE.md`, so every layer uses the same train and validation records.
 - Training: the released SFT configuration and sweep-selected learning rates.
   Train each layer for one epoch to obtain the ranking curve, then train the
