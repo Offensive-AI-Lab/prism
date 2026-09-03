@@ -110,7 +110,8 @@ paper evaluation, superseding the first pass's smoke-first approach. The smoke
 configuration remains an optional installation check in the reproduction guide.
 Both READMEs have lost redundant reading lists and implementation asides; the
 eval README also no longer lists non-paper detection metrics or calibration
-commands. The IFEval training-overlap limitation remains only in the data card.
+commands. The later author pass also removed the IFEval training-overlap aside
+from the data card.
 All existing checklist items are retained.
 
 Supporting-document pass (2026-09-03):
@@ -442,7 +443,7 @@ Tasks:
 - [x] Explain precomputed versus on-the-fly activation extraction in one short note.
 - [x] State that precomputation is the released high-throughput reproduction path and on-the-fly extraction is supported but optional.
 - [x] Avoid implying that activation precomputation is inherently mandatory for GRPO.
-- [x] Move caching, split parity, model-class differences, and detailed extraction behavior into the pipeline guide.
+- [x] Move caching, split parity, model-class differences, and detailed extraction behavior into the pipeline guide. *(Later author pass removed the model-class comparison and parity-tool aside; retain the concise cache and split instructions.)*
 - [x] Remove the long reproduction-caveat list from the README.
 - [x] Add direct Hugging Face links beside every released checkpoint.
 - [x] Add the released training-dataset link beside the training instructions.
@@ -460,7 +461,7 @@ Tasks:
 - [x] Explain `instruction_set` (formerly `response_b`) as the generated instruction list used as the training target.
 - [x] Explain which fields SFT consumes.
 - [x] Explain which fields GRPO consumes.
-- [x] Explain the validity mask, filtering criteria, grouping, and split behavior.
+- [x] Explain the validity mask, filtering criteria, grouping, and split behavior. *(Per Rahul, omit the detailed bullet-count, leakage, and fragmentation filters.)*
 - [x] Report released source and split counts.
 - [x] Link the released Hugging Face dataset.
 - [x] Explain how regenerating data differs from using the released records.
@@ -480,11 +481,11 @@ Tasks:
 - [x] Keep details about split identity, valid-record masks, hook layers, and cache reuse here rather than in the README.
 - [x] Remove calibration ownership and rubric-history material.
 - [x] Remove internal experiment commentary such as optional curricula unless the feature remains publicly supported.
-- [x] Use one consistent name for the target model, PRISM decoder, judge model, report, and instruction labels.
+- [x] Use one consistent name for the target model, PRISM decoder, judge model, report, and instruction labels. *(Removed the no-retrieval-prompt aside and internal loader-field inventory, including `skip_prompt_b`, from public guides.)*
 
 ### 12. Rewrite and simplify the remaining `prism` documents
 
-- [x] Rewrite `docs/RECIPES.md` as a concise released-training reference after Claude Code removes historical material.
+- [x] Rewrite `docs/RECIPES.md` as a concise released-training reference after Claude Code removes historical material. *(Display rounded Qwen SFT learning rates: `4e-5` and `3e-4`; keep exact recipe values unchanged.)*
 - [x] Rewrite `docs/CHECKPOINT_FORMAT.md` to describe only current training and release formats plus the security note. *(Useful fields and the security note merged into `PIPELINE.md#export-and-checkpoint-format`; the standalone file was deleted.)*
 - [x] Rewrite or remove `docs/ABLATIONS.md` based on the completed-public-experiment decision.
 - [x] Review `docs/RUBRIC.md`; replace it with a short link to the canonical eval rubric if maintaining two copies creates drift. *(Deleted the mirror and linked directly from the pipeline and contributing guide.)*

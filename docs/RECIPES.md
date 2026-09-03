@@ -13,23 +13,21 @@ its corresponding SFT run; `PRISM_SFT_INIT_FROM` selects another SFT checkpoint.
 All recipes use the same [training records](DATA_CARD.md), seed 42, and
 up to 128 response-token activations. LoRA uses rank 32, alpha 64, and dropout
 0.05 on the attention and MLP projection modules; Ministral restricts adapters
-to its language-model stack. The projection is trainable in both stages, and
-the decoder receives no text retrieval prompt.
+to its language-model stack. The projection is trainable in both stages.
 
 ## Optimization
 
 | Setting | Qwen SFT | Gemma / Ministral SFT | GRPO, all targets |
 |---|---|---|---|
-| LoRA learning rate | `4.176320076421569e-05` | `4e-5` | `2e-5` |
-| Projection learning rate | `3.205823229668696e-04` | `3e-4` | `5e-6` |
+| LoRA learning rate | `4e-5` | `4e-5` | `2e-5` |
+| Projection learning rate | `3e-4` | `3e-4` | `5e-6` |
 | Batch × gradient accumulation | 4 × 16 | 4 × 16 | 2 × 1 |
 | Training length | 3 epochs | 3 epochs | 1 epoch, capped at 20,000 updates |
 | Validation samples | 2,000 | 1,500 | 500 |
 | Checkpoint selection | Lowest validation loss | Lowest validation loss | Highest validation judge reward |
 
-The scripts and [shared recipe code](../recipes/_lib.sh) define these settings,
-including overrides to the Python module defaults. Use the scripts for
-reproduction.
+Learning rates are rounded. Use the recipes and
+[shared recipe code](../recipes/_lib.sh) for exact settings and reproduction.
 
 ## GRPO settings
 

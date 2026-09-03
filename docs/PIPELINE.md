@@ -39,8 +39,7 @@ The shell scripts above require exported settings. Training recipes also read
 
 Supervised fine-tuning trains a linear projection and LoRA adapters to predict
 the instruction list. The projection maps frozen target-model activations into
-input embeddings for the same model, used as the PRISM decoder. The released
-configuration supplies no textual retrieval request (`skip_prompt_b=True`).
+input embeddings for the same model, used as the PRISM decoder.
 
 ### Activation extraction
 
@@ -63,12 +62,6 @@ in both paths. The cache stores split membership at extraction time and copies
 the mask beside its manifest; on-the-fly loaders find the mask next to the
 JSONL directory. Keep the original records, order, and split settings to retain
 the same membership.
-
-Matching records does not imply identical training runs. The paths use different
-batch ordering, and Qwen uses `AutoModelForCausalLM` for cached extraction but
-`AutoModelForImageTextToText` in the trainers. To inspect activation differences
-and split membership, use [`check_onthefly_parity.py`](../scripts/check_onthefly_parity.py)
-with `--precomputed-dir <cache> --dataset-paths <jsonl-files>`.
 
 ## 3. Refine with GRPO and export
 
@@ -108,10 +101,6 @@ model and training method; `--out-dir` changes the output directory.
 | `lora_state` | LoRA adapter weights, retained in fp32 |
 | `projection_state` | Projection weight and bias, converted to bf16 |
 | `opt_step` | Optimizer-step metadata |
-
-The main loader fields in `config` are `model_id`, `hook_layer`,
-`projection_dim`, `lora_r`, `lora_alpha`, `lora_target_modules`, `max_act_tokens`,
-`skip_prompt_b`, and `_use_projection`. Base-model weights are not included.
 
 Training checkpoints additionally retain optimizer, scheduler, and validation
 state; GRPO can also retain its sampling tracker and run ID. Exported checkpoints

@@ -57,9 +57,8 @@ the supervision. See the [pipeline guide](PIPELINE.md#activation-extraction).
 
 Rule-based checks reject empty or malformed labels, echoes of the label-generation
 request, and likely truncation. An LLM judge checks whether the labels faithfully
-enumerate the prompt's instructions. The final mask also rejects lists with more
-than six bullets, template leakage, and labels fragmented into one- or two-word
-bullets. These are label-quality filters, not content-safety filters.
+enumerate the prompt's instructions. These are label-quality filters, not
+content-safety filters.
 
 The loaders split the full records before applying the mask. They use sorted
 input files, seed 42, validation and test ratios of 0.1 each, and no source
@@ -83,5 +82,4 @@ they do not reconstruct the released records exactly. Source sampling,
 paraphrase generation, and model-based filtering can change the resulting data.
 
 The labels can contain Qwen3.5-9B's errors and omissions, and the validity mask
-filters all three splits. IFEval contributes training prompts, so evaluation
-on IFEval or overlapping derivatives is not an independent held-out evaluation.
+filters all three splits.
