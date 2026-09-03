@@ -30,6 +30,7 @@ Claude Code should not independently rewrite public-facing prose. When a task re
 - Cut unnecessary content rather than automatically moving it to another document. Retain, consolidate, or remove whole documents according to whether they serve a distinct reader need. A rewrite task below is not a requirement to preserve a document that has no useful purpose.
 - Write public-facing documentation for the released state: omit temporary private-access and pending-publication/review notices. Zenity XPIA is the exception until its use and provenance are resolved. Track actual publication actions and approvals in this internal TODO; this wording decision does not complete them or remove source-license requirements.
 - The eval README quickstart must run the scored paper evaluation, not an installation smoke test. Its metrics table should contain only the paper's reward, coverage, hallucination rate, and average adversarial detection.
+- Use PRISM, not ITM, in public prose. Keep the scoring and adversarial rubrics aligned with their canonical judge prompts. The calibrated prompt text and compatibility-sensitive code identifiers are unchanged by editorial cleanup; any later rename there needs a coordinated implementation decision.
 - Commit and push each completed round of changes in every affected repository after focused checks. Keep unrelated changes out of those commits.
 
 ## Status legend
@@ -68,11 +69,11 @@ Pending writing (Codex), in suggested order:
    (currently file-only, no card, no license metadata) and for the four
    checkpoint repos. Check existing cards against current checkpoint digests,
    usage instructions, citations, and license metadata as well as adding missing cards.
-3. Finish task 8 CLI terminology and the remaining eval writing: the data card,
-   rubrics, and FOLLOWED annotation guide, with XPIA and calibration claims pending
-   their evidence decisions. The training supporting-document pass (tasks 10–12)
-   and the eval reproduction, contribution, and ablation guides are complete below.
-   Task 16 visuals and task 23 final editorial review remain open.
+3. Finish task 8 CLI terminology. Both repos' supporting docs have been tightened;
+   the eval rubrics now follow the canonical judge prompts, and the FOLLOWED
+   runbook has been removed. XPIA and calibration evidence decisions still block
+   completion of tasks 14–15. Task 16 visuals and task 23 final editorial review
+   remain open.
 4. Demo UI text review (labels, error wording, settings hints in
    `demo/index.html`) per task 17's Codex ownership.
 
@@ -146,6 +147,22 @@ Eval supporting-document pass (2026-09-03):
   annotation guide still need review. No open release decision is marked complete.
 - Checked local Markdown links, anchors, code fences, and diffs; no training or
   evaluation was run. All existing checklist items are retained.
+
+Eval rubric and data-card pass (2026-09-03):
+
+- Replaced ITM with PRISM in public Markdown and aligned both rubrics with the
+  unchanged scoring/identifier prompts. Corrected per-bullet hallucination rules
+  and documented `detect_rate_avg` as the fraction meeting a 0.5 mean-coverage
+  threshold, not raw mean coverage.
+- Removed `docs/ANNOTATION_FOLLOW.md` at Rahul's request. Its binary annotation
+  rule, sampling-spec link, and calibration command now live in `DATA_CARD.md`.
+- Cut repeated setup, rules, examples, calibration commentary, and table summaries.
+  Consolidated calibration results in the data card without changing their values.
+  Main, XPIA, and ablation result tables are unchanged. Source-license restrictions
+  and the XPIA redistribution hold remain; task 5's evidence mismatch is not resolved.
+- Checked local Markdown references, prompt/module text parity, and result-table
+  preservation. No runtime code, judge prompts, data artifacts, or tests changed;
+  no training or evaluation was run. All checklist items are retained.
 
 ### 1. Protect the existing `prism-eval` result changes
 
@@ -389,12 +406,12 @@ Eval supporting-document pass (2026-09-03):
 **Owners: Claude Code for dependency analysis; Codex for any retained annotation guide**
 
 - [x] Determine whether `configs/advdet_queue_spec_v1.json` is needed to reproduce a reported calibration artifact. *(Retained: documents the shipped advdet gold set's sampling; linked from DATA_CARD.)*
-- [x] Determine whether `configs/follow_queue_spec_v1.json` is needed to reproduce a reported calibration artifact. *(Retained: referenced by docs/ANNOTATION_FOLLOW.md; snapshot + report are shipped.)*
+- [x] Determine whether `configs/follow_queue_spec_v1.json` is needed to reproduce a reported calibration artifact. *(Retained under its current unversioned name; linked from DATA_CARD.md for sampling provenance. Snapshot and report remain unchanged.)*
 - [x] Determine whether `configs/recall_calib_spec_v1.json` is needed to reproduce a reported calibration artifact. *(Deleted: internal Weave-trace experiment, unreferenced.)*
 - [x] Retain queue specifications only if their inputs, sampling method, labels, and outputs are sufficiently public to reproduce the process.
-- [x] Audit `docs/ANNOTATION_FOLLOW.md` using the same criterion. *(Retained; internal paths and dangling doc references fixed. Codex rewrite still pending per task 15.)*
-- [ ] If retained, consolidate annotation instructions and queue provenance into one concise calibration document.
-- [ ] If not retained, remove the specs, document, and dangling references.
+- [x] Audit `docs/ANNOTATION_FOLLOW.md` using the same criterion. *(Removed at Rahul's request; useful annotation rules and the recomputation command consolidated in DATA_CARD.md.)*
+- [x] If retained, consolidate annotation instructions and queue provenance into one concise calibration document. *(DATA_CARD.md contains the retained instructions and links to sampling specifications.)*
+- [x] If not retained, remove the specs, document, and dangling references. *(Removed the standalone runbook and its public references; the sampling specs remain useful provenance and were retained.)*
 
 ---
 
@@ -515,22 +532,22 @@ Tasks:
 
 ### 14. Rewrite `prism-eval/DATA_CARD.md`
 
-- [ ] Separate the canonical 1,000-record evaluation suite from the optional XPIA corpus.
-- [ ] Put source, license, record count, and transformation information in a compact table.
-- [ ] Explain AP, HO, BC, and BN directly and without promotional filler.
-- [ ] Retain the non-commercial BN restriction prominently and accurately.
-- [ ] Retain relevant content limitations for BC without listing colorful examples unless necessary.
-- [ ] Explain the suite schema with one representative record.
-- [ ] Describe AP/HO construction and filtering concisely.
-- [ ] Replace the current calibration narrative with the final canonical artifacts and reproducible numbers only.
-- [ ] Remove third-rater narration, failed-run history, “worth knowing” commentary, and judge-selection history.
+- [x] Separate the canonical 1,000-record evaluation suite from the optional XPIA corpus.
+- [x] Put source, license, record count, and transformation information in a compact table.
+- [x] Explain AP, HO, BC, and BN directly and without promotional filler.
+- [x] Retain the non-commercial BN restriction prominently and accurately.
+- [x] Retain relevant content limitations for BC without listing colorful examples unless necessary.
+- [x] Explain the suite schema with one representative record.
+- [x] Describe AP/HO construction and filtering concisely.
+- [~] Replace the current calibration narrative with the final canonical artifacts and reproducible numbers only. *(Narration cut and tables consolidated; existing values retained. Canonical evidence alignment remains task 5.)*
+- [x] Remove third-rater narration, failed-run history, “worth knowing” commentary, and judge-selection history.
 - [ ] Document XPIA only after its provenance path is resolved.
 - [ ] Ensure all provenance and licensing claims match `NOTICE` and the actual released files.
-- [ ] Retain genuine limitations: single-response evaluation, primarily English data, synthetic adversarial scenarios, and target-model dependence.
+- [x] Retain genuine limitations: single-response evaluation, primarily English data, synthetic adversarial scenarios, and target-model dependence.
 
 ### 15. Rewrite remaining `prism-eval` documentation
 
-- [~] Rewrite `docs/RESULTS.md` so it reports the final paper results and directly reproducible supplemental results only. Main-result prose and reproduction links are tightened; XPIA and calibration sections await the decisions in tasks 4–5.
+- [~] Rewrite `docs/RESULTS.md` so it reports the final paper results and directly reproducible supplemental results only. Main-result prose is tightened and calibration now links to DATA_CARD.md; XPIA and calibration evidence await tasks 4–5.
 - [x] Remove old checkpoint comparisons and step histories.
 - [x] Remove the calibration discrepancy narrative once a canonical decision is made.
 - [x] Retain upstream baseline revisions and checkpoint links because they are useful for provenance.
@@ -538,8 +555,8 @@ Tasks:
 - [x] Make target-model, PRISM-checkpoint, and judge-endpoint requirements explicit.
 - [x] Keep realistic sources of run-to-run variation without overexplaining.
 - [x] Review `docs/ABLATION_REPORT.md` for internal narration, stale checkpoint names, and consistency with final results. Preserved every numeric table row; removed contradictory summary prose and clarified the extraction-context conditions.
-- [ ] Review `RUBRIC.md` and `RUBRIC_ADVDET.md` for concise public-facing terminology and canonical prompt links.
-- [ ] Rewrite or remove `docs/ANNOTATION_FOLLOW.md` according to the annotation-artifact decision.
+- [x] Review `RUBRIC.md` and `RUBRIC_ADVDET.md` for concise public-facing terminology and canonical prompt links. *(PRISM terminology; rules checked against both unchanged judge prompts, with per-bullet hallucination and thresholded detection definitions corrected.)*
+- [x] Rewrite or remove `docs/ANNOTATION_FOLLOW.md` according to the annotation-artifact decision. *(Deleted at Rahul's request; annotation rule and recomputation command retained in DATA_CARD.md. XPIA publication decisions remain open.)*
 - [x] Review `CONTRIBUTING.md` for the same direct, human-authored style.
 
 ### 16. Add two useful visuals
