@@ -31,6 +31,7 @@ Claude Code should not independently rewrite public-facing prose. When a task re
 - Write public-facing documentation for the released state: omit temporary private-access and pending-publication/review notices. Zenity XPIA is the exception until its use and provenance are resolved. Track actual publication actions and approvals in this internal TODO; this wording decision does not complete them or remove source-license requirements.
 - The eval README quickstart must run the scored paper evaluation, not an installation smoke test. Its metrics table should contain only the paper's reward, coverage, hallucination rate, and average adversarial detection.
 - Use PRISM, not ITM, in public prose. Keep the scoring and adversarial rubrics aligned with their canonical judge prompts. The calibrated prompt text and compatibility-sensitive code identifiers are unchanged by editorial cleanup; any later rename there needs a coordinated implementation decision.
+- Use “indirect prompt injection benchmarks” in public prose, not the internal name “XPIA.” Existing filenames and commands remain unchanged until a coordinated implementation rename; preserve the unresolved provenance and redistribution warning.
 - Commit and push each completed round of changes in every affected repository after focused checks. Keep unrelated changes out of those commits.
 
 ## Status legend
