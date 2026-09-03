@@ -67,9 +67,11 @@ Pending writing (Codex), in suggested order:
    (currently file-only, no card, no license metadata) and for the four
    checkpoint repos. Check existing cards against current checkpoint digests,
    usage instructions, citations, and license metadata as well as adding missing cards.
-3. Finish task 8 CLI terminology and tasks 14–15 eval-document work. The training
-   supporting-document pass (tasks 10–12) is complete below; task 16 visuals and
-   task 23 final editorial review remain open.
+3. Finish task 8 CLI terminology and the remaining eval writing: the data card,
+   rubrics, and FOLLOWED annotation guide, with XPIA and calibration claims pending
+   their evidence decisions. The training supporting-document pass (tasks 10–12)
+   and the eval reproduction, contribution, and ablation guides are complete below.
+   Task 16 visuals and task 23 final editorial review remain open.
 4. Demo UI text review (labels, error wording, settings hints in
    `demo/index.html`) per task 17's Codex ownership.
 
@@ -127,6 +129,21 @@ Supporting-document pass (2026-09-03):
   or licensing approval is inferred. No runtime code, datasets, or results changed.
 - Validation is limited to document references, command/field checks, and diff
   checks. No training, evaluation, or GPU run is needed for this round.
+
+Eval supporting-document pass (2026-09-03):
+
+- Tightened `docs/REPRODUCING.md` and `CONTRIBUTING.md`; removed repeated setup,
+  retained the paper metrics and useful extension instructions, and documented
+  the ablation drivers' judge-environment requirements.
+- Cut internal narration and redundant summaries from `docs/RESULTS.md` and
+  `docs/ABLATION_REPORT.md`. Corrected baseline-target wording and removed two
+  ablation summaries that contradicted their tables. All 78 numeric table rows
+  are unchanged; no checkpoint, configuration, or result artifact was modified.
+- Left the results document's XPIA and calibration sections unchanged pending
+  their evidence/provenance decisions. The eval data card, rubrics, and FOLLOWED
+  annotation guide still need review. No open release decision is marked complete.
+- Checked local Markdown links, anchors, code fences, and diffs; no training or
+  evaluation was run. All existing checklist items are retained.
 
 ### 1. Protect the existing `prism-eval` result changes
 
@@ -511,17 +528,17 @@ Tasks:
 
 ### 15. Rewrite remaining `prism-eval` documentation
 
-- [ ] Rewrite `docs/RESULTS.md` so it reports the final paper results and directly reproducible supplemental results only.
-- [ ] Remove old checkpoint comparisons and step histories.
+- [~] Rewrite `docs/RESULTS.md` so it reports the final paper results and directly reproducible supplemental results only. Main-result prose and reproduction links are tightened; XPIA and calibration sections await the decisions in tasks 4–5.
+- [x] Remove old checkpoint comparisons and step histories.
 - [x] Remove the calibration discrepancy narrative once a canonical decision is made.
-- [ ] Retain upstream baseline revisions and checkpoint links because they are useful for provenance.
-- [ ] Rewrite `docs/REPRODUCING.md` as the detailed counterpart to the concise README.
-- [ ] Make target-model, PRISM-checkpoint, and judge-endpoint requirements explicit.
-- [ ] Keep realistic sources of run-to-run variation without overexplaining.
-- [ ] Review `docs/ABLATION_REPORT.md` for internal narration, stale checkpoint names, and consistency with final results.
+- [x] Retain upstream baseline revisions and checkpoint links because they are useful for provenance.
+- [x] Rewrite `docs/REPRODUCING.md` as the detailed counterpart to the concise README.
+- [x] Make target-model, PRISM-checkpoint, and judge-endpoint requirements explicit.
+- [x] Keep realistic sources of run-to-run variation without overexplaining.
+- [x] Review `docs/ABLATION_REPORT.md` for internal narration, stale checkpoint names, and consistency with final results. Preserved every numeric table row; removed contradictory summary prose and clarified the extraction-context conditions.
 - [ ] Review `RUBRIC.md` and `RUBRIC_ADVDET.md` for concise public-facing terminology and canonical prompt links.
 - [ ] Rewrite or remove `docs/ANNOTATION_FOLLOW.md` according to the annotation-artifact decision.
-- [ ] Review `CONTRIBUTING.md` for the same direct, human-authored style.
+- [x] Review `CONTRIBUTING.md` for the same direct, human-authored style.
 
 ### 16. Add two useful visuals
 
