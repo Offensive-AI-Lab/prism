@@ -28,6 +28,7 @@ Claude Code should not independently rewrite public-facing prose. When a task re
 - Do not delete an artifact merely because its purpose is unclear. First determine whether code, tests, paper reproduction, or a released result depends on it.
 - Public prose should sound authored by the project team: direct, specific, technically accurate, and free of generic filler, excessive caveats, and internal lab narration.
 - Cut unnecessary content rather than automatically moving it to another document. Retain, consolidate, or remove whole documents according to whether they serve a distinct reader need. A rewrite task below is not a requirement to preserve a document that has no useful purpose.
+- Write public-facing documentation for the released state: omit temporary private-access and pending-publication/review notices. Zenity XPIA is the exception until its use and provenance are resolved. Track actual publication actions and approvals in this internal TODO; this wording decision does not complete them or remove source-license requirements.
 - The eval README quickstart must run the scored paper evaluation, not an installation smoke test. Its metrics table should contain only the paper's reward, coverage, hallucination rate, and average adversarial detection.
 - Commit and push each completed round of changes in every affected repository after focused checks. Keep unrelated changes out of those commits.
 
@@ -451,7 +452,7 @@ Tasks:
 ### 10. Rewrite `prism/docs/DATA_CARD.md` from scratch
 
 - [x] Begin with the exact upstream sources and their licenses.
-- [x] State what data are released and where to download them. *(Link added with the current private/review status.)*
+- [x] State what data are released and where to download them. *(Direct dataset link and download instructions; temporary private/review wording removed per Rahul's release-state documentation policy.)*
 - [x] Show one representative record or compact schema example. *(Compact field table.)*
 - [x] Explain `prompt` (formerly `prompt_a`) as the instruction-rich user request.
 - [x] Explain `response` (formerly `response_a`) as the target model's generated response.

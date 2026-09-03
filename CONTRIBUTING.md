@@ -7,7 +7,7 @@ uv sync --extra dev
 uv run pytest tests -q
 ```
 
-Keep default tests CPU-only and independent of private weights, credentials,
+Keep default tests CPU-only and independent of model downloads, credentials,
 or a live judge endpoint.
 
 ## Submitting a change

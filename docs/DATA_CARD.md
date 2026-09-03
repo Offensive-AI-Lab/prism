@@ -10,13 +10,11 @@ PRISM's training prompts come from three datasets:
 
 The [training dataset](https://huggingface.co/datasets/Offensive-AI-Lab/prism-training-dataset)
 contains these 277,496 records and a validity mask selecting 203,589 for use.
-It remains private pending redistribution review. The source licenses above
-do not replace that review; the Ai2 source also lists third-party model-output
-terms in its dataset card.
+The Ai2 source also lists third-party model-output terms in its dataset card.
 
 ## Files and fields
 
-With authorized Hugging Face access, download the records using
+Download the records using
 [`scripts/download_dataset.py`](../scripts/download_dataset.py). It places
 `if_eval.jsonl`, `if_multi_constraints.jsonl`, and `ultrachat.jsonl` in
 `$PRISM_DATA_DIR/prompt-only/jsonl/`, with `valid_record_ids.json` beside that

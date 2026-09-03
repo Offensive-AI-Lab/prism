@@ -83,9 +83,7 @@ available to the standalone download and export commands below.
 
 The [training dataset](https://huggingface.co/datasets/Offensive-AI-Lab/prism-training-dataset)
 contains prompts from IFEval, IF Multi-Constraints, and UltraChat, paired with
-target-model responses and generated instruction lists. It is currently private
-pending release review; downloading it requires an authorized Hugging Face
-account. Set `HF_TOKEN` in your shell if needed.
+target-model responses and generated instruction lists.
 
 ```bash
 uv run python scripts/download_dataset.py
