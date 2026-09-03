@@ -40,6 +40,7 @@ licenses and generated fields are part of the pending redistribution review.
 `valid_record_ids.json` mask that every training loader applies. Activations
 are extracted per target model; the records are shared across target models.
 
-Selection effects to be aware of: the target model is also the labeler; the
-judge-filter mask gates the train *and* eval splits; and IFEval is a training
-source, so do not evaluate these models on IFEval-derived benchmarks.
+Qwen3.5-9B generates both responses and labels, and the judge-filter mask
+applies to training and evaluation splits. IFEval contributes training prompts,
+so evaluation on IFEval or overlapping derivatives is not an independent
+held-out evaluation.

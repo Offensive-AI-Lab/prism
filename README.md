@@ -34,8 +34,7 @@ cache; PRISM checkpoints go in `./checkpoints`. Change the latter with
 
 The default mode uses the final PRISM checkpoint. You can also select
 **PRISM w/o RL** or compare with LatentQA and Activation Oracles. The first
-comparison downloads about 580 MB of additional adapters. Checkpoint and adapter
-downloads are verified by SHA-256. Prompts and responses stay on your machine.
+comparison downloads about 580 MB of additional adapters.
 
 ## Checkpoints
 
@@ -48,9 +47,6 @@ model's weights.
 | [PRISM w/o RL — Qwen](https://huggingface.co/Offensive-AI-Lab/prism-qwen3.5-9b-sft) | `Qwen/Qwen3.5-9B` | 16 | SFT only |
 | [PRISM — Gemma](https://huggingface.co/Offensive-AI-Lab/prism-gemma-2-9b-it-grpo) | `google/gemma-2-9b-it` | 21 | SFT + GRPO |
 | [PRISM — Ministral](https://huggingface.co/Offensive-AI-Lab/prism-ministral-3-8b-grpo) | `mistralai/Ministral-3-8B-Instruct-2512-BF16` | 17 | SFT + GRPO |
-
-The released Qwen GRPO checkpoint is the model reported in the paper.
-For benchmark commands, see [prism-eval](https://github.com/Offensive-AI-Lab/prism-eval).
 
 ## How it works
 
@@ -98,8 +94,7 @@ uv run python scripts/check_dataset.py --dataset-dir "$PRISM_DATA_DIR/prompt-onl
 
 To generate and filter a new dataset instead, see the
 [pipeline guide](docs/PIPELINE.md). Sources, fields, and filtering are described
-in the [data card](docs/DATA_CARD.md). IFEval is a training source, so it should
-not be used as an independent evaluation benchmark for these checkpoints.
+in the [data card](docs/DATA_CARD.md).
 
 ### 2. Train with SFT
 
@@ -137,12 +132,8 @@ uv run python scripts/export_checkpoint.py \
 ```
 
 The export removes training state and produces a checkpoint for `prism-eval`.
-[Released recipes](docs/RECIPES.md) lists the hyperparameters and corresponding
-Gemma and Ministral commands. The recipes, rather than the Python module
-defaults, define the released training runs.
-
-For a small end-to-end training check, run the SFT and GRPO recipes with
-`SMOKE=1`. They use separate checkpoint directories.
+[Released recipes](docs/RECIPES.md) lists the training settings and corresponding
+Gemma and Ministral commands.
 
 ## Adding a target model
 
@@ -150,14 +141,6 @@ Add a profile in `src/prism/target_models.py` defining the model ID, hook layer,
 loader, attention backend, and LoRA scope. Check its chat template with
 `uv run python scripts/check_chat_template.py <profile-name>`, then add
 matching SFT and GRPO recipes and an exporter model tag.
-
-## Further reading
-
-- [Pipeline guide](docs/PIPELINE.md): dataset generation, activation extraction, SFT, GRPO, and export.
-- [Data card](docs/DATA_CARD.md): dataset sources, fields, and filtering.
-- [Released recipes](docs/RECIPES.md): training configurations.
-- [Checkpoint format](docs/CHECKPOINT_FORMAT.md): fields needed by the loaders.
-- [Scoring rubric](docs/RUBRIC.md) and [training ablations](docs/ABLATIONS.md).
 
 ## Citation
 

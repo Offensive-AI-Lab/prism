@@ -27,6 +27,8 @@ Claude Code should not independently rewrite public-facing prose. When a task re
 - Do not run full training or full evaluation solely for this release-documentation work. Use focused checks for files, imports, links, prompt parity, and code paths affected by deletions or renames.
 - Do not delete an artifact merely because its purpose is unclear. First determine whether code, tests, paper reproduction, or a released result depends on it.
 - Public prose should sound authored by the project team: direct, specific, technically accurate, and free of generic filler, excessive caveats, and internal lab narration.
+- Cut unnecessary content rather than automatically moving it to another document. Retain, consolidate, or remove whole documents according to whether they serve a distinct reader need. A rewrite task below is not a requirement to preserve a document that has no useful purpose.
+- The eval README quickstart must run the scored paper evaluation, not an installation smoke test. Its metrics table should contain only the paper's reward, coverage, hallucination rate, and average adversarial detection.
 - Commit and push each completed round of changes in every affected repository after focused checks. Keep unrelated changes out of those commits.
 
 ## Status legend
@@ -98,6 +100,14 @@ squash approval for both repositories.
 ---
 
 ## P0 — Resolve release blockers
+
+Latest editorial review (2026-09-03): the eval README now starts with the scored
+paper evaluation, superseding the first pass's smoke-first approach. The smoke
+configuration remains an optional installation check in the reproduction guide.
+Both READMEs have lost redundant reading lists and implementation asides; the
+eval README also no longer lists non-paper detection metrics or calibration
+commands. The IFEval training-overlap limitation remains only in the data card.
+All existing checklist items are retained.
 
 ### 1. Protect the existing `prism-eval` result changes
 
@@ -450,13 +460,13 @@ Tasks:
 - [x] Explain that evaluation involves two distinct model roles:
   - [x] the local target model plus PRISM checkpoint;
   - [x] the judge model exposed through an OpenAI-compatible endpoint for paper metrics.
-- [x] State which quickstart requires only the target model and which workflows require the judge.
+- [x] State that interactive PRISM use needs only the target model and PRISM checkpoint, while the eval quickstart requires the judge.
 - [x] Clarify whether the 80 GB figure refers to PRISM inference, a co-located judge, or the combined setup.
-- [x] Keep the existing smoke evaluation as a useful installation check.
+- [x] Keep the existing smoke evaluation as an optional installation check in the reproduction guide, not the README quickstart.
 - [x] Do not present the smoke evaluation as the interactive “Try PRISM” demo.
 - [x] Delete “Exact match and token F1 are also emitted, but they are not the paper's headline metrics.”
 - [x] Remove the equivalent implementation-check sentence from `docs/REPRODUCING.md` unless it is genuinely needed there.
-- [x] Keep the metrics table focused on reported metrics.
+- [x] Keep the metrics table focused on reported metrics: reward, coverage, hallucination rate, and `detect_rate_avg`. Do not list `detect_rate_any`, `detect_rate_all`, or the length penalty as separate paper metrics.
 - [x] Add direct Hugging Face links to all released checkpoints.
 - [x] Remove redundant explanations duplicated in `docs/REPRODUCING.md`.
 - [~] Keep XPIA out of the public release narrative until provenance is resolved. *(README run instructions removed; only the redistribution hold remains there. Review the data card, results, and other public files under tasks 4, 14, and 15.)*
