@@ -106,7 +106,7 @@ The recipe extracts and caches response-token activations on first use.
 Both SFT and GRPO also support on-the-fly extraction: set `PRISM_ON_THE_FLY=1`
 before running a recipe. This avoids the cache but adds a no-gradient
 activation-extraction forward per batch. The released runs used the cache;
-see the [pipeline guide](docs/PIPELINE.md#2-activations--precomputed-cache-default-or-on-the-fly)
+see the [pipeline guide](docs/PIPELINE.md#activation-extraction)
 for the differences between the two paths.
 
 ### 3. Refine with GRPO and export

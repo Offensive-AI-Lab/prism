@@ -67,8 +67,9 @@ Pending writing (Codex), in suggested order:
    (currently file-only, no card, no license metadata) and for the four
    checkpoint repos. Check existing cards against current checkpoint digests,
    usage instructions, citations, and license metadata as well as adding missing cards.
-3. Finish task 8 CLI terminology and tasks 10–15 supporting-document rewrites;
-   task 16 visuals and task 23 final editorial review remain open.
+3. Finish task 8 CLI terminology and tasks 14–15 eval-document work. The training
+   supporting-document pass (tasks 10–12) is complete below; task 16 visuals and
+   task 23 final editorial review remain open.
 4. Demo UI text review (labels, error wording, settings hints in
    `demo/index.html`) per task 17's Codex ownership.
 
@@ -108,6 +109,24 @@ Both READMEs have lost redundant reading lists and implementation asides; the
 eval README also no longer lists non-paper detection metrics or calibration
 commands. The IFEval training-overlap limitation remains only in the data card.
 All existing checklist items are retained.
+
+Supporting-document pass (2026-09-03):
+
+- Kept `prism/docs/DATA_CARD.md` for sources, schema, supervision, filters, and
+  split counts; `PIPELINE.md` for extraction and training behavior; `RECIPES.md`
+  for model-specific commands and settings; and `ABLATIONS.md` for the separate
+  layer/seed protocols. Tightened `CONTRIBUTING.md` without repeating the README.
+- Deleted the duplicated `RUBRIC.md`. Deleted `CHECKPOINT_FORMAT.md` after merging
+  useful export fields and the untrusted-checkpoint warning into the pipeline.
+  Both removed documents remain recoverable from Git history.
+- Corrected the claim that prioritized sampling and the under-length penalty
+  apply only to transfer models; all three GRPO recipes enable them. Documented
+  the current SFT learning rates and validation-sample caps per target.
+- Checked sources against the loaders, recipes, exporter, and validator; checked
+  the linked upstream dataset cards for their license metadata. No publication
+  or licensing approval is inferred. No runtime code, datasets, or results changed.
+- Validation is limited to document references, command/field checks, and diff
+  checks. No training, evaluation, or GPU run is needed for this round.
 
 ### 1. Protect the existing `prism-eval` result changes
 
@@ -414,45 +433,45 @@ Tasks:
 
 ### 10. Rewrite `prism/docs/DATA_CARD.md` from scratch
 
-- [ ] Begin with the exact upstream sources and their licenses.
+- [x] Begin with the exact upstream sources and their licenses.
 - [x] State what data are released and where to download them. *(Link added with the current private/review status.)*
 - [x] Show one representative record or compact schema example. *(Compact field table.)*
 - [x] Explain `prompt` (formerly `prompt_a`) as the instruction-rich user request.
 - [x] Explain `response` (formerly `response_a`) as the target model's generated response.
 - [x] Explain the fixed request for an instruction report (formerly `prompt_b`); it is now code-only, not a record field.
-- [~] Explain `instruction_set` (formerly `response_b`) as the generated instruction list used as the training target. *(Field meaning updated; SFT/GRPO consumption still needs the full rewrite.)*
-- [ ] Explain which fields SFT consumes.
-- [ ] Explain which fields GRPO consumes.
-- [ ] Explain the validity mask, filtering criteria, grouping, and split behavior.
-- [ ] Report released source and split counts.
+- [x] Explain `instruction_set` (formerly `response_b`) as the generated instruction list used as the training target.
+- [x] Explain which fields SFT consumes.
+- [x] Explain which fields GRPO consumes.
+- [x] Explain the validity mask, filtering criteria, grouping, and split behavior.
+- [x] Report released source and split counts.
 - [x] Link the released Hugging Face dataset.
-- [ ] Explain how regenerating data differs from using the released records.
+- [x] Explain how regenerating data differs from using the released records.
 - [x] Remove judge-calibration content; it belongs in `prism-eval`.
 - [x] Remove rubric-version history.
 - [x] Remove references to the deleted known-issues document.
-- [ ] Keep licensing language specific, accurate, and readable.
+- [x] Keep licensing language specific, accurate, and readable. *(Source-card licenses are linked; publication approval and the source-by-source redistribution decision remain open under tasks 2–3.)*
 - [x] Avoid phrases that merely announce what the document “ships,” “covers,” or “documents” without conveying substantive information.
 
 ### 11. Rewrite `prism/docs/PIPELINE.md`
 
-- [ ] Align section names and stage numbering with the README architecture diagram.
+- [~] Align section names and stage numbering with the README architecture diagram. *(Text now uses the README's three stages; the diagram itself remains task 16.)*
 - [x] Replace public “Oracle” terminology.
-- [ ] Describe the released dataset path first and generation of a new dataset second.
-- [ ] Explain activation precomputation and on-the-fly extraction accurately.
-- [ ] State that on-the-fly overhead should be the additional no-grad activation-extraction forward for each sampled batch, assuming implementation avoids unrelated duplicated work.
-- [ ] Keep details about split identity, valid-record masks, hook layers, and cache reuse here rather than in the README.
-- [ ] Remove calibration ownership and rubric-history material.
-- [ ] Remove internal experiment commentary such as optional curricula unless the feature remains publicly supported.
-- [ ] Use one consistent name for the target model, PRISM decoder, judge model, report, and instruction labels.
+- [x] Describe the released dataset path first and generation of a new dataset second.
+- [x] Explain activation precomputation and on-the-fly extraction accurately.
+- [x] State that on-the-fly overhead should be the additional no-grad activation-extraction forward for each sampled batch, assuming implementation avoids unrelated duplicated work.
+- [x] Keep details about split identity, valid-record masks, hook layers, and cache reuse here rather than in the README.
+- [x] Remove calibration ownership and rubric-history material.
+- [x] Remove internal experiment commentary such as optional curricula unless the feature remains publicly supported.
+- [x] Use one consistent name for the target model, PRISM decoder, judge model, report, and instruction labels.
 
 ### 12. Rewrite and simplify the remaining `prism` documents
 
-- [ ] Rewrite `docs/RECIPES.md` as a concise released-training reference after Claude Code removes historical material.
-- [ ] Rewrite `docs/CHECKPOINT_FORMAT.md` to describe only current training and release formats plus the security note.
-- [ ] Rewrite or remove `docs/ABLATIONS.md` based on the completed-public-experiment decision.
-- [ ] Review `docs/RUBRIC.md`; replace it with a short link to the canonical eval rubric if maintaining two copies creates drift.
-- [ ] Review `CONTRIBUTING.md` for the same direct, human-authored style.
-- [ ] Ensure no document refers readers to deleted files or internal-only artifacts.
+- [x] Rewrite `docs/RECIPES.md` as a concise released-training reference after Claude Code removes historical material.
+- [x] Rewrite `docs/CHECKPOINT_FORMAT.md` to describe only current training and release formats plus the security note. *(Useful fields and the security note merged into `PIPELINE.md#export-and-checkpoint-format`; the standalone file was deleted.)*
+- [x] Rewrite or remove `docs/ABLATIONS.md` based on the completed-public-experiment decision.
+- [x] Review `docs/RUBRIC.md`; replace it with a short link to the canonical eval rubric if maintaining two copies creates drift. *(Deleted the mirror and linked directly from the pipeline and contributing guide.)*
+- [x] Review `CONTRIBUTING.md` for the same direct, human-authored style.
+- [x] Ensure no document refers readers to deleted files or internal-only artifacts.
 
 ### 13. Rewrite and tighten `prism-eval/README.md`
 

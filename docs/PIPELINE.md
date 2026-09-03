@@ -1,151 +1,127 @@
-# Pipeline walkthrough
+# Training pipeline
 
-End-to-end path from raw instruction data to a released PRISM monitor.
-Set `PRISM_DATA_DIR` (datasets and activation shards) and `PRISM_CKPT_DIR`
-(checkpoints) in your shell before running the standalone commands below.
-The training recipes also read these values from `.env`; the dataset
-downloader does not.
+The [README](../README.md#training) gives the commands for the released Qwen
+run. [Recipes](RECIPES.md) lists the settings and commands for all target models.
 
-## 0. Serve the target model (data generation only)
+## 1. Prepare the data
 
-Training-data generation talks to any OpenAI-compatible endpoint serving the
-target model (default `http://localhost:8089/v1`), e.g.
-`vllm serve Qwen/Qwen3.5-9B --port 8089`.
+Use the [training records](DATA_CARD.md#files-and-fields) and validity mask
+for reproduction. The data card defines the fields, filtering, and splits.
 
-## 1. Training data — download the release, or generate your own
+### Generating new records
 
-Use the prepared [training records](https://huggingface.co/datasets/Offensive-AI-Lab/prism-training-dataset)
-with every recipe. The dataset is private pending redistribution review;
-until publication, downloading requires authorized Hugging Face access.
+To build a new dataset, serve the target model through an OpenAI-compatible
+endpoint. For example, in a separate vLLM environment:
 
 ```bash
-uv run python scripts/download_dataset.py   # → $PRISM_DATA_DIR/prompt-only (SHA-verified)
-uv run python scripts/check_dataset.py --dataset-dir $PRISM_DATA_DIR/prompt-only
+vllm serve Qwen/Qwen3.5-9B --port 8089
 ```
 
-Keep the JSONL files and `valid_record_ids.json` together. The split is computed
-before applying this mask, so removing rejected records from the source files
-would change split membership.
-
-Alternatively, generate a fresh dataset under `$PRISM_DATA_DIR/prompt-only/`,
-then clean it (sampling and judge filtering are not bitwise deterministic, so
-a regenerated dataset approximates the released one):
+From the repository root, select a separate directory for the new data:
 
 ```bash
-scripts/generate_dataset.sh     # → prompt-only/jsonl/*.jsonl
-scripts/clean_dataset.sh        # filter + valid_record_ids.json mask
+export PRISM_DATA_DIR=/path/to/new-prism-data
+export DATAGEN_BASE_URL=http://localhost:8089/v1
+export DATAGEN_MODEL=Qwen/Qwen3.5-9B
+scripts/generate_dataset.sh
+scripts/clean_dataset.sh
 ```
 
-Cleaning = the rules/LLM-judge filter plus a second rules layer
-(≤6-bullet cap, template-leak, word-fragmentation) captured in
-`valid_record_ids.json`. The mask lives next to `jsonl/`; the activation
-precompute copies it into the cache directory and the on-the-fly loader
-picks it up from next to the JSONL files, so both training paths apply it
-automatically (pass `--valid-record-ids` to override).
+Generation writes `prompt-only/jsonl/*.jsonl`; cleaning writes
+`prompt-only/valid_record_ids.json`. The cleaned record copies under
+`filtered/` are intermediate outputs, not the training input directory.
+Set `PRISM_DATA_DIR` to this root when training on the new records.
 
-Each record contains `{id, source_dataset, prompt, response, instruction_set,
-metadata}`. `prompt` is an instruction-rich user request drawn from IFEval,
-IF-multi-constraints, or UltraChat; `response` is the target model's answer;
-and `instruction_set` is the generated list of instructions in `prompt`. The
-fixed request for that list lives in code rather than in every record. The
-filter applies rule gates plus an LLM judge and emits a
-`valid_record_ids.json` mask honoured downstream.
+The shell scripts above require exported settings. Training recipes also read
+`.env`; see [`.env.example`](../.env.example) for generation overrides.
 
-## 2. Activations — precomputed cache (default) or on-the-fly
+## 2. Train with SFT
+
+Supervised fine-tuning trains a linear projection and LoRA adapters to predict
+the instruction list. The projection maps frozen target-model activations into
+input embeddings for the same model, used as the PRISM decoder. The released
+configuration supplies no textual retrieval request (`skip_prompt_b=True`).
+
+### Activation extraction
+
+Both paths read `prompt + response` and take up to the last 128 response-token
+activations at the target profile's hook layer:
+
+- **Cached (default):** the recipe extracts sharded safetensors on first use
+  and reuses them for SFT and GRPO. An existing cache can be selected with
+  `PRISM_PRECOMPUTED_DIR`. It must match the target model, layer, and data.
+- **On-the-fly:** set `PRISM_ON_THE_FLY=1` for either recipe. Each sampled batch
+  passes through the resident base model with LoRA disabled and gradients off;
+  the forward stops at the hook layer. This partial forward is the additional
+  model computation. GRPO records its duration as `timing/extract_s`.
+
+Both trainers still load the target model to run the decoder. Cached extraction
+trades disk space for throughput; it was used for the released checkpoints.
+
+The recipes sort the JSONLs and use the same split function and validity mask
+in both paths. The cache stores split membership at extraction time and copies
+the mask beside its manifest; on-the-fly loaders find the mask next to the
+JSONL directory. Keep the original records, order, and split settings to retain
+the same membership.
+
+Matching records does not imply identical training runs. The paths use different
+batch ordering, and Qwen uses `AutoModelForCausalLM` for cached extraction but
+`AutoModelForImageTextToText` in the trainers. To inspect activation differences
+and split membership, use [`check_onthefly_parity.py`](../scripts/check_onthefly_parity.py)
+with `--precomputed-dir <cache> --dataset-paths <jsonl-files>`.
+
+## 3. Refine with GRPO and export
+
+GRPO starts from the target model's SFT checkpoint. For each record, it samples
+candidate instruction reports, scores them with the judge, and updates the
+projection and LoRA adapters using group-relative rewards. A KL penalty limits
+divergence from the frozen SFT reference.
+
+Instruction coverage and hallucination follow the
+[canonical scoring rubric](https://github.com/Offensive-AI-Lab/prism-eval/blob/main/RUBRIC.md).
+All three released GRPO recipes use prioritized sampling, dynamic sampling that
+rejects low-variance or near-ceiling groups, and penalties for overly long or
+short reports. [Recipes](RECIPES.md) gives their settings.
+
+The recipes select `best.pt` by validation loss for SFT and validation judge
+reward for GRPO. They also save training state for resuming. Candidate scores
+are written to `judge_traces.jsonl`, which
+[`analyze_judge_traces.py`](../scripts/analyze_judge_traces.py) summarizes.
+For custom hard-example sampling, `prism.rl.build_hard_ids` converts those traces
+into IDs accepted by the trainer's `--hard-ids-json` option.
+
+### Export and checkpoint format
+
+Export the selected checkpoint for inference:
 
 ```bash
-# cache: built automatically the first time recipes/sft_<model>.sh (or grpo_<model>.sh) runs;
-# standalone: uv run python -m prism.activations.extract ...
-# on-the-fly instead: PRISM_ON_THE_FLY=1 recipes/sft_<model>.sh / recipes/grpo_<model>.sh
+uv run python scripts/export_checkpoint.py \
+  "$PRISM_CKPT_DIR/grpo-qwen3.5-9b-L16/best.pt"
 ```
 
-Both paths run the frozen target model over `prompt + response` and
-take the residual stream at the profile's hook layer for the last ≤128
-response tokens.
+This writes `exports/prism-qwen3.5-9b-grpo.pt`. The exporter infers the target
+model and training method; `--out-dir` changes the output directory.
 
-- **Precomputed cache** (`prism.activations.extract`, the default): the
-  activations are extracted once and written as sharded safetensors, with
-  the train/val/test split frozen at extraction time (seed 42, 0.1/0.1;
-  paraphrase groups never straddle splits) and the `valid_record_ids.json`
-  mask copied alongside. Training reads these tensors from disk and avoids
-  the activation-extraction forward for each batch. SFT and GRPO still load
-  the target model because it serves as the LoRA-adapted decoder. The cache
-  improves training throughput at the cost of additional storage. All results
-  in the paper and every released checkpoint were trained from the cache.
-- **On-the-fly** (`--dataset-paths` on both `prism.sft.train` and
-  `prism.rl.train`; `PRISM_ON_THE_FLY=1` in the recipes): the trainer reads
-  the JSONL files, applies the same mask and the same split function with the
-  same parameters (`split_*` keys in `src/prism/sft/config.py`). Train and
-  validation membership therefore match a cache built from the same files.
-  Each batch is passed through the frozen base model with LoRA adapters
-  disabled, and the forward stops at the hook layer. The main additional
-  model computation is this no-grad partial forward; GRPO records it as
-  `timing/extract_s` in W&B. This mode avoids the activation cache and is
-  useful when changing hook layers during development. It differs from the
-  cache path in training order (plain shuffle rather than shard-grouped
-  shuffle) and validation order. For Qwen3.5, it also uses the training-time
-  model class rather than the extractor's model class, so cached and in-loop
-  activations differ slightly (`scripts/check_onthefly_parity.py` measures
-  the difference).
+| Release field | Contents |
+|---|---|
+| `config` | Model and adapter configuration, with training paths and run identities removed or replaced |
+| `lora_state` | LoRA adapter weights, retained in fp32 |
+| `projection_state` | Projection weight and bias, converted to bf16 |
+| `opt_step` | Optimizer-step metadata |
 
-`scripts/check_onthefly_parity.py --precomputed-dir <cache> --dataset-paths
-<the cache's JSONLs>` verifies the two paths against each other: identical
-split membership, identical decoder prefix, and the activation gap (max/mean
-|Δ|, cosine) for a sample of records. Split identity holds for caches built by
-this repository's extractor from the same files.
+The main loader fields in `config` are `model_id`, `hook_layer`,
+`projection_dim`, `lora_r`, `lora_alpha`, `lora_target_modules`, `max_act_tokens`,
+`skip_prompt_b`, and `_use_projection`. Base-model weights are not included.
 
-## 3. SFT — `prism.sft.train`
+Training checkpoints additionally retain optimizer, scheduler, and validation
+state; GRPO can also retain its sampling tracker and run ID. Exported checkpoints
+omit that state and are for inference, not full training resumption.
 
-```bash
-recipes/sft_<model>.sh
-```
+These files use `torch.save` serialization. The exporter loads with
+`weights_only=False`, so export only training checkpoints you trust.
 
-The monitor = a linear projection (`hidden → hidden`) mapping frozen
-activations into the target model's own embedding space, prepended as soft
-tokens, plus LoRA (r=32, α=64, 7 proj modules) on the target model, trained
-with cross-entropy to emit `instruction_set`. `skip_prompt_b=True` — the
-monitor decodes from activations alone, no text prompt at train time.
-Best checkpoint by val loss.
+### Target-model settings
 
-## 4. GRPO — `prism.rl.train`
-
-```bash
-scripts/serve_judge.sh             # once: vLLM judge endpoint (Gemma-4-31B class)
-recipes/grpo_<model>.sh
-```
-
-For each prompt, sample N candidate reports (T=1.2), score each with the
-LLM judge against the rubric (docs/RUBRIC.md): reward =
-`1.0·coverage − 0.4·hallucination_rate − length_penalty`. Group-relative
-advantages (GRPO) + k3 KL (coef 0.05) to the frozen SFT reference;
-trainable surface = projection + LoRA, matching SFT. DAPO-style dynamic
-sampling drops all-tied / near-ceiling groups; the transfer runs add
-prioritized sampling and an under-length collapse penalty
-(docs/RECIPES.md). Best checkpoint by val judge reward.
-
-Every run writes per-candidate `judge_traces.jsonl` next to its checkpoints
-— inspect with `scripts/analyze_judge_traces.py`; an optional hard-example
-curriculum can be built from them via `prism.rl.build_hard_ids` and fed back
-with `--hard-ids-json`.
-
-## 5. Export — `scripts/export_checkpoint.py`
-
-```bash
-uv run python scripts/export_checkpoint.py $PRISM_CKPT_DIR/<run>/best.pt
-```
-
-Strips optimizer/scheduler/tracker state, sanitizes the embedded config,
-and emits `prism-{target}-{method}.pt` in the exact format
-[prism-eval](https://github.com/Offensive-AI-Lab/prism-eval) loads
-(docs/CHECKPOINT_FORMAT.md). Evaluation itself — the 1000-record
-adversarial suite, judges, baselines — lives entirely in prism-eval.
-
-## Environment notes
-
-- `transformers>=5.3,<6`: the Qwen3.5 profile patches
-  `Qwen3_5Model.compute_3d_position_ids`, and gemma-2 must load with
-  `attn_implementation="eager"` — sdpa silently drops the attention/logit
-  softcapping and produces wrong activations. Both are pinned in the
-  target-model profiles.
-- The trainers assume a single ~95 GB GPU (gradient checkpointing on, k3 KL);
-  see the memory notes in `src/prism/rl/config.py`.
+[`target_models.py`](../src/prism/target_models.py) controls model loading and
+tokenization. Preserve its Qwen position-ID handling, Gemma eager attention for
+softcapping, and Ministral text-only LoRA scope when extending the pipeline.

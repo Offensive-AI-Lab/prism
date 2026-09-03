@@ -1,58 +1,43 @@
-# Ablations
+# Training ablations
 
-## Layer selection (hook-layer ablation)
+Use the same [training data and setup](../README.md#training) as the main recipes.
+Evaluation-only activation ablations are documented in
+[prism-eval](https://github.com/Offensive-AI-Lab/prism-eval/blob/main/docs/ABLATION_REPORT.md).
 
-The released Qwen3.5-9B monitors use layer 16 of 32. The ablation evaluates
-layers `{2, 6, 10, 13, 16, 19, 23, 27, 31}`, covering early, middle, and late
-depths.
+## Hook layer
 
-Protocol:
-
-- Data: cleaned instruction-labelled JSONL files with on-the-fly activation
-  extraction. This avoids building a separate activation cache for every layer.
-  The loader applies `valid_record_ids.json` and the standard split function described in
-  `docs/PIPELINE.md`, so every layer uses the same train and validation records.
-- Training: the released SFT configuration and sweep-selected learning rates.
-  Train each layer for one epoch to obtain the ranking curve, then train the
-  best layer and layer 16 for the full three-epoch schedule.
-- Selection: validation loss, with token accuracy reported as a secondary
-  metric. Validation loss is also used to select `best.pt` in the SFT recipes.
-- Reference: compare against the layer-16 run from this ablation rather than
-  the layer-16 result printed in the paper. All ablation runs use the
-  training-time model class, while the released precomputed activations used
-  the causal-LM class.
-
-Run one layer per GPU:
+The Qwen layer sweep uses `{2, 6, 10, 13, 16, 19, 23, 27, 31}`. Run one layer
+per GPU:
 
 ```bash
-LAYER=13 PRISM_DATA_DIR=/path/to/data PRISM_CKPT_DIR=/path/to/ckpts \
-    recipes/ablate_layer_qwen3.5-9b.sh
+LAYER=13 recipes/ablate_layer_qwen3.5-9b.sh
 ```
 
-Compare the best validation loss from each run using W&B `val/loss` or the
-value stored in `best.pt`. `ABLATE_EPOCHS` defaults to 1. `PRISM_PYTHON` can
-select a cluster Python environment instead of `uv run`, and
-`PRISM_HOOK_LAYER` overrides the configured layer.
+The script uses on-the-fly extraction with the standard validity mask and
+[split](DATA_CARD.md#filtering-and-splits). It keeps the Qwen SFT learning rates,
+with micro-batch 2 and gradient accumulation 32. Runs default to one epoch;
+set `ABLATE_EPOCHS=3` for the full SFT schedule.
 
-## Seed variability (GRPO)
+Checkpoints go to `$PRISM_CKPT_DIR/ablate-sft-qwen-L<layer>/`. Compare
+`best_val_loss` in each `best.pt`, or W&B's `val/loss`. Include layer 16
+in the sweep: its on-the-fly result is the matched control, rather than the
+released checkpoint trained from a cache.
 
-To estimate run-to-run variance, repeat the released GRPO recipe from the same
-SFT checkpoint and activation cache while changing only `PRISM_SEED`. The seed
-affects rollout sampling and data order; the precomputed validation split stays
-fixed. Treat the released seed-42 run as one sample and report the mean and
-standard deviation across all runs. Keep the remaining settings equal to the
-configuration embedded in the released checkpoint.
+## Training seed
+
+Hold the SFT initialization and activation cache fixed while varying the GRPO
+training seed. Keep the judge endpoint and remaining settings unchanged:
 
 ```bash
-SEED=1337 PRISM_SFT_INIT_FROM=/path/to/released-sft/best.pt \
-    PRISM_DATA_DIR=... PRISM_CKPT_DIR=... PRISM_JUDGE_BASE_URL=... \
-    recipes/grpo_seed_qwen3.5-9b.sh
+SEED=1337 PRISM_SFT_INIT_FROM=/path/to/sft/best.pt \
+  recipes/grpo_seed_qwen3.5-9b.sh
 ```
 
-Bootstrap confidence intervals over the 1,000 evaluation records provide a
-separate estimate of measurement uncertainty. That analysis belongs in
-`prism-eval`, where the per-record scores are stored.
+This uses the [released GRPO settings](RECIPES.md#grpo-settings) and writes to
+`$PRISM_CKPT_DIR/grpo-qwen3.5-9b-L16-seed<seed>/`. Use cached activations so
+the comparison varies training randomness without adding in-loop extraction
+differences.
 
-GPU kernels are not bitwise deterministic, so repeated runs with the same seed
-can still differ. The reported spread therefore includes both seed and hardware
-run-to-run variability.
+Report the mean and standard deviation across the chosen seeds. This measures
+training variability; bootstrap intervals over evaluation records measure a
+different source of uncertainty.

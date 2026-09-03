@@ -1,48 +1,50 @@
-# Released-run recipes
+# Training recipes
 
-Hyperparameters below were recovered **directly from the released runs'
-checkpoints** (each training checkpoint embeds its full config), not from
-memory or lab notes. `scripts/export_checkpoint.py` applied to the source
-runs reproduces the published files tensor-for-tensor.
+Run these scripts from the repository root after the
+[training setup](../README.md#training). Each GRPO recipe reads `best.pt` from
+its corresponding SFT run; `PRISM_SFT_INIT_FROM` selects another SFT checkpoint.
 
-## The four released checkpoints
+| Target | SFT recipe | GRPO recipe | Hook layer | Projection width |
+|---|---|---|---:|---:|
+| Qwen3.5-9B | [sft_qwen3.5-9b.sh](../recipes/sft_qwen3.5-9b.sh) | [grpo_qwen3.5-9b.sh](../recipes/grpo_qwen3.5-9b.sh) | 16 | 4096 |
+| Gemma-2-9B-it | [sft_gemma2-9b.sh](../recipes/sft_gemma2-9b.sh) | [grpo_gemma2-9b.sh](../recipes/grpo_gemma2-9b.sh) | 21 | 3584 |
+| Ministral-3-8B | [sft_ministral3-8b.sh](../recipes/sft_ministral3-8b.sh) | [grpo_ministral3-8b.sh](../recipes/grpo_ministral3-8b.sh) | 17 | 4096 |
 
-| | SFT (qwen) | GRPO qwen | GRPO gemma-2 | GRPO ministral |
-|---|---|---|---|---|
-| released file | prism-qwen3.5-9b-sft.pt | prism-qwen3.5-9b-grpo.pt | prism-gemma-2-9b-it-grpo.pt | prism-ministral-3-8b-grpo.pt |
-| recipe | `sft_qwen3.5-9b.sh` | `grpo_qwen3.5-9b.sh` | `grpo_gemma2-9b.sh` | `grpo_ministral3-8b.sh` |
-| selected checkpoint | best val loss | best val reward | best val reward | best val reward |
-| model / hook layer / proj dim | Qwen3.5-9B / 16 / 4096 | same | gemma-2-9b-it / 21 / 3584 | Ministral-3-8B / 17 / 4096 |
-| use_projection / skip_prompt_b | ✓ / ✓ | same | same | same |
-| LoRA r / α / dropout | 32 / 64 / 0.05 (7 proj modules) | same | same | same, regex-scoped to `language_model` |
-| lr | 4.176320076421569e-05 † | 2e-5 | 2e-5 | 2e-5 |
-| projection_lr | 3.205823229668696e-04 † | 5e-6 | 5e-6 | 5e-6 |
-| batch × grad_accum × epochs | 4 × 16 × 3 | 2 × 1 × 1 | 2 × 1 | 2 × 1 |
-| n_candidates | — | 6 | 6 | 6 |
-| KL estimator / coef | — | k3 / 0.05 | k3 / 0.05 | k3 / 0.05 |
-| gen max_new / temp / top_p | — | 144 / 1.2 / 0.95 | same | same |
-| dynamic sampling min_std / max_mean | — | 0.05 / 0.95 | same | same |
-| prioritized sampling | — | yes | yes | yes |
-| under-length penalty | — | yes | yes | yes |
-| reward weights inst / halluc | — | 1.0 / 0.4 | same | same |
-| judge | — | gemma4-31B-it (`google/gemma-4-31B-it`, reasoning off) | same | same |
-| step cap | — | 20 000 | 20 000 | 20 000 |
-| data | the released training dataset, **precomputed activation cache** (the default path; on-the-fly extraction is supported but was not used for the reported runs) | same | same | same |
+All recipes use the same [training records](DATA_CARD.md), seed 42, and
+up to 128 response-token activations. LoRA uses rank 32, alpha 64, and dropout
+0.05 on the attention and MLP projection modules; Ministral restricts adapters
+to its language-model stack. The projection is trainable in both stages, and
+the decoder receives no text retrieval prompt.
 
-† sweep-sampled values, pinned as exact literals in `recipes/sft_qwen3.5-9b.sh`.
+## Optimization
 
-## Recipes vs. module defaults
+| Setting | Qwen SFT | Gemma / Ministral SFT | GRPO, all targets |
+|---|---|---|---|
+| LoRA learning rate | `4.176320076421569e-05` | `4e-5` | `2e-5` |
+| Projection learning rate | `3.205823229668696e-04` | `3e-4` | `5e-6` |
+| Batch × gradient accumulation | 4 × 16 | 4 × 16 | 2 × 1 |
+| Training length | 3 epochs | 3 epochs | 1 epoch, capped at 20,000 updates |
+| Validation samples | 2,000 | 1,500 | 500 |
+| Checkpoint selection | Lowest validation loss | Lowest validation loss | Highest validation judge reward |
 
-The recipes are the reproduction path. `python -m prism.rl.train` on its own
-starts from the config defaults in `src/prism/rl/config.py` (2,000 steps, 4
-candidates, token-exact KL, lr 5e-6, no prioritized sampling); `recipes/_lib.sh`
-passes the flags that turn those into the released settings above.
+The scripts and [shared recipe code](../recipes/_lib.sh) define these settings,
+including overrides to the Python module defaults. Use the scripts for
+reproduction.
 
-## Exact-reproduction caveats
+## GRPO settings
 
-1. **Use the released dataset for exact reproduction**
-   (`scripts/download_dataset.py`). Regenerating with the generation scripts
-   approximates it — sampling and judge filtering are not bitwise
-   deterministic across hardware.
-2. GRPO needs a running judge endpoint: `scripts/serve_judge.sh` (a
-   Gemma-4-31B-it class model; ~2×80 GB or 1×95 GB GPU).
+| Setting | Value |
+|---|---|
+| Candidate reports per record | 6 |
+| Generation | 144 new tokens; temperature 1.2; top-p 0.95 |
+| KL regularization | k3 estimator; coefficient 0.05 |
+| Dynamic sampling | Minimum reward standard deviation 0.05; maximum mean reward 0.95 |
+| Prioritized sampling | Enabled |
+| Coverage / hallucination weights | 1.0 / 0.4 |
+| Over-length penalty | 0.15 per bullet beyond 1.5 × ground-truth count |
+| Under-length penalty | 0.15 per bullet below 0.5 × ground-truth count |
+| Judge | `google/gemma-4-31B-it`, reasoning disabled |
+
+The released runs used cached activations. See the
+[pipeline guide](PIPELINE.md#activation-extraction) for on-the-fly extraction and
+cache reuse, and [training ablations](ABLATIONS.md) for layer and seed controls.
