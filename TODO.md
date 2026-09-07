@@ -645,11 +645,13 @@ private; `prism-eval` GitHub public but `prism` still private (its README link
 to prism 404s for outsiders — a final-gate item).
 
 ### Tier 0 — offline / CPU
-- [ ] 0.1 `uv sync --extra dev` (+ demo, bertscore) on clean clones, both repos — resolves cleanly
-- [ ] 0.2 `uv run pytest -q` both repos — prism 144 / eval 203, 0 fail
-- [ ] 0.3 wheel build; renamed prompts (`scoring.txt`, `adversarial_identifier.txt`) packaged
-- [ ] 0.4 every documented command + relative link in READMEs/docs resolves
-- [ ] 0.5 import every module from outside the repo (exercises legacy-name fallbacks)
+- [x] 0.1 `uv sync --extra dev` (+ demo, bertscore) on clean clones, both repos — resolves cleanly *(all extras exit 0; eval no longer forces cu128 torch)*
+- [x] 0.2 `uv run pytest -q` both repos — prism 144 / eval 203, 0 fail, 0 skip
+- [x] 0.3 wheel build; renamed prompts (`scoring.txt` 6074B, `adversarial_identifier.txt` 3446B) packaged
+- [x] 0.4 every documented command + relative link in READMEs/docs resolves *(0 broken, incl. Codex's rewrites)*
+- [x] 0.5 import every module from outside the repo — 32/32 prism, 22/22 eval; no module needs an extra just to import
+
+**Tier 0 outcome (2026-09-07):** all pass, zero correctness failures. Newcomer friction found & fixed: (1) READMEs never documented the test command → added a Development section to both; (2) eval forced a CUDA torch build on CPU boxes → dropped the cu128 index (now consistent with prism); (3) a stale `requests`/urllib3 import warning on every run → pinned `requests>=2.32`. Remaining ~719 pytest warnings are Pydantic-deprecation noise from the `weave` dependency (not our code), left as-is. Pushed eval ee5dda5, prism c64d2e9.
 
 ### Tier 1 — artifact pulls (network, no GPU)
 - [ ] 1.1 `download_dataset.py` (token while private) → `check_dataset.py` = "matches the release" (277,496; 162,821/20,410/20,358)
