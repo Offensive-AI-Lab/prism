@@ -681,9 +681,11 @@ to prism 404s for outsiders — a final-gate item).
 **Tier 3 outcome (2026-09-07):** all pass with a live gemma-4-31B-it judge; no code fixes. GRPO (both paths) runs judge-scored with 0 judge errors after the rename; the eval scoring path and the whole XPIA pipeline work end to end; calibration reproduces the shipped numbers. **Infra note (not release-blocking):** the internal `~/itm-eval-suite/vllm-service/serve_gemma.sh` used `uv run vllm` which failed to find the binary on a compute node — I launched via `~/.venv-vllm/bin/vllm` directly. The PUBLIC path is `scripts/serve_judge.sh` (creates its own `~/.venv-vllm` and calls `$SERVE_VENV/bin/vllm`), which avoids that failure mode; worth one clean launch-test of the public script before release, but the model+args are proven (this judge served all of Tier 3).
 
 ### Tier 4 — reproduction spot-checks (confidence, optional)
-- [ ] 4.1 ~200-step GRPO from released SFT init — reward climbs, no collapse
-- [ ] 4.2 250-record eval slice with released GRPO ckpt — per-setting coverage within noise of RESULTS
-- [ ] 4.3 `analyze_xpia.py` on a rebuilt-corpus eval — tables render (numbers differ from RESULTS, expected)
+- [x] 4.1 ~200-step GRPO from released SFT init — reward climbs, no collapse
+- [x] 4.2 250-record eval slice with released GRPO ckpt — per-setting coverage within noise of RESULTS
+- [x] 4.3 `analyze_xpia.py` on a rebuilt-corpus eval — tables render (numbers differ from RESULTS, expected)
+
+**Tier 4 outcome (2026-09-07):** all pass; no code fixes. **4.1** — 200-step on-the-fly GRPO from the released SFT checkpoint (`prism-qwen3.5-9b-sft.pt`) against the live judge: reward climbed +0.107 (early steps 0.646 → late 0.754), loss stayed near zero, grad norms bounded (1.4–5.5), dynamic-sampling healthy, zero judge errors — no collapse. **4.2** — 250-record judge-scored slice (n≈63/setting) with the released GRPO checkpoint reproduces RESULTS.md coverage: BN 0.984 vs 0.977, BC 0.761 vs 0.761 (exact), HO 0.609 vs 0.646, AP 0.664 vs 0.685; avg 0.7535 vs 0.767 (−0.014); hallucination avg 0.017 vs 0.020. BN/BC ~exact, HO/AP a couple points low as expected for n≈63 subsampling. **4.3** — `analyze_xpia.py` on the Tier-3.4 rebuilt-corpus rows renders every section end to end, both structurally and with the judge behaviour + provenance passes (8/8 each): per-source coverage, adversarial, follow-gated, behaviour profile, provenance split, and all breakdowns (difficulty / attacker-goal / injection-position / ib-matrix); all three sources (bipia, llmail, injecagent) present. Test jobs torn down and the judge server stopped afterward.
 
 ### Final gates (before public)
 - [ ] flip `prism` GitHub public + dataset repo public; re-run 1.1–1.4 fully anonymous
