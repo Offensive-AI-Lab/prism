@@ -662,12 +662,14 @@ to prism 404s for outsiders — a final-gate item).
 **Tier 1 outcome (2026-09-07):** all pass; the public/private access model verified (dataset 401 private, checkpoints+adapters anonymous). Friction fixed: (1) dataset script had no token path → added `--token`/$HF_TOKEN + docstring note; (2) baseline adapters were fetchable only via the GPU demo path → added `scripts/download_baselines.py`; (3) BIPIA clone-vs-install ambiguity → header note. **For Codex:** the prism README data step should mention HF_TOKEN while the dataset repo is private, repeat the `export PRISM_DATA_DIR=...` in that section, and the demo README can point at `download_baselines.py`. Pushed prism a6ae88e, eval 4a961e6.
 
 ### Tier 2 — GPU, no judge
-- [ ] 2.1 SFT smoke, cache path — best.pt + sane val loss
-- [ ] 2.2 SFT smoke, on-the-fly (`PRISM_ON_THE_FLY=1`)
-- [ ] 2.3 SFT smoke FROM the downloaded dataset (the "train right away" promise)
-- [ ] 2.4 layer-ablation smoke (`SMOKE=1 LAYER=16`)
-- [ ] 2.5 demo PRISM-only — chat + retrieval recovers the instruction; ~20 GB VRAM
-- [ ] 2.6 demo compare — first-click downloads + PRISM/LatentQA/AO all answer; ~20 GB peak
+- [x] 2.1 SFT smoke, cache path — SFT DONE, val loss 2.681 (trained from the downloaded released dataset)
+- [x] 2.2 SFT smoke, on-the-fly — SFT DONE, val loss 2.655
+- [x] 2.3 SFT from the downloaded dataset — covered by 2.1 (PRISM_DATA_DIR = the HF download; renamed fields load fine)
+- [x] 2.4 layer-ablation smoke — ABLATION RUN DONE, val loss 2.694
+- [x] 2.5 demo PRISM-only — recovers the hidden Fast-Track objective; 35 s cold-start, ~19.3 GB VRAM
+- [x] 2.6 demo compare — all three columns answer; adapters auto-downloaded + SHA-verified; ~20 GB peak
+
+**Tier 2 outcome (2026-09-07):** all pass, zero code fixes. The field rename did not break any training path — cache, on-the-fly, and ablation all SFT-DONE with sane val loss on the freshly-downloaded released dataset; the demo works end to end (PRISM-only + 3-way compare) with correct hidden-objective recovery at ~20 GB. **For Codex (demo README):** document `--port` / `--host` / `--checkpoint-dir`; state that first launch needs network + HF but no login for the public repos; note `uv sync --extra demo` is self-contained (pass `--extra demo --extra dev` for both) — the recurring non-additive-extra gotcha (also Tier 0); optionally a brief note that a cached base model makes cold-start ~35 s vs the "~10 min" first-download estimate.
 
 ### Tier 3 — GPU + judge
 - [ ] 3.1 GRPO smoke, cache — 50 steps, judge 0 errors, reward moves
