@@ -27,12 +27,6 @@ Claude Code should not independently rewrite public-facing prose. When a task re
 - Do not run full training or full evaluation solely for this release-documentation work. Use focused checks for files, imports, links, prompt parity, and code paths affected by deletions or renames.
 - Do not delete an artifact merely because its purpose is unclear. First determine whether code, tests, paper reproduction, or a released result depends on it.
 - Public prose should sound authored by the project team: direct, specific, technically accurate, and free of generic filler, excessive caveats, and internal lab narration.
-- Cut unnecessary content rather than automatically moving it to another document. Retain, consolidate, or remove whole documents according to whether they serve a distinct reader need. A rewrite task below is not a requirement to preserve a document that has no useful purpose.
-- Write public-facing documentation for the released state: omit temporary private-access and pending-publication/review notices. Zenity XPIA is the exception until its use and provenance are resolved. Track actual publication actions and approvals in this internal TODO; this wording decision does not complete them or remove source-license requirements.
-- The eval README quickstart must run the scored paper evaluation, not an installation smoke test. Its metrics table should contain only the paper's reward, coverage, hallucination rate, and average adversarial detection.
-- Use PRISM, not ITM, in public prose. Keep the scoring and adversarial rubrics aligned with their canonical judge prompts. The calibrated prompt text and compatibility-sensitive code identifiers are unchanged by editorial cleanup; any later rename there needs a coordinated implementation decision.
-- Use “indirect prompt injection benchmarks” in public prose, not the internal name “XPIA.” Existing filenames and commands remain unchanged until a coordinated implementation rename; preserve the unresolved provenance and redistribution warning.
-- Commit and push each completed round of changes in every affected repository after focused checks. Keep unrelated changes out of those commits.
 
 ## Status legend
 
@@ -45,8 +39,8 @@ Claude Code should not independently rewrite public-facing prose. When a task re
 
 ## Codex handoff — implementation state as of 2026-09-02 (Claude Code)
 
-Most implementation work in P0/P1/P4 is complete. Open checkboxes below still
-need work or a decision. The writing can now refer to these implemented features:
+Everything mechanical in P0/P1/P4 that does not require a human decision is done
+(see the ticked boxes). What exists now, so the writing can reference it:
 
 - **Local demo shipped** at `prism/demo/` (`uv sync --extra demo && uv run python
   demo/app.py` → http://127.0.0.1:7860). Auto-downloads and SHA-verifies the two
@@ -64,106 +58,43 @@ need work or a decision. The writing can now refer to these implemented features
 
 Pending writing (Codex), in suggested order:
 
-1. Both README prose rewrites are complete in the first editorial pass below.
-   The demo screenshot and the two task-16 visuals still need to be added.
+1. `prism/README.md` rewrite per task 9 — now including the "Try PRISM"
+   quickstart (before training), the demo screenshot placement, and one short
+   note that compare mode exists and what it downloads.
 2. **Model cards + license tags for the two new HF baseline-adapter repos**
    (currently file-only, no card, no license metadata) and for the four
-   checkpoint repos. Check existing cards against current checkpoint digests,
-   usage instructions, citations, and license metadata as well as adding missing cards.
-3. Finish task 8 CLI terminology. Both repos' supporting docs have been tightened;
-   the eval rubrics now follow the canonical judge prompts, and the FOLLOWED
-   runbook has been removed. XPIA and calibration evidence decisions still block
-   completion of tasks 14–15. Task 16 visuals and task 23 final editorial review
-   remain open.
+   checkpoint repos if they lack cards.
+3. Task 8 Oracle-terminology replacement, tasks 10–15 document rewrites,
+   task 16 visuals, task 23 editorial pass — unchanged scope.
 4. Demo UI text review (labels, error wording, settings hints in
    `demo/index.html`) per task 17's Codex ownership.
 
-Pending humans: approval to publish the training dataset (its HF org/name is
-settled, task 2); XPIA provenance (task 4); licensing decisions (task 3);
-calibration evidence (task 5); demo-behavior confirmation (task 18); and final
-squash approval for both repositories.
+Pending humans: HF org/name + approval for the training dataset (task 2);
+XPIA provenance path (task 4); licensing decisions (task 3); the two `[?]`
+demo-behavior confirmations in task 18; final squash of both repos at the end.
 
----
+### Update — 2026-09-07 (Claude Code): dataset + XPIA shipped
 
-## Codex first editorial pass — 2026-09-03
+Two big items since the note above are now DONE in code; the prose they create is Codex's.
 
-- Rewrote both READMEs: local demo first in `prism`, judge-free smoke evaluation
-  first in `prism-eval`, direct checkpoint links, separate training/inference/judge
-  requirements, and final checkpoint results without development history.
-- Updated public training terminology and corrected the documented record schema
-  to `prompt`, `response`, and `instruction_set`. No runtime identifiers changed.
-- Removed the exact-match/token-F1 aside from the eval README and reproduction
-  guide. Removed the XPIA run instructions from the README; its provenance review
-  and the remaining XPIA material are still open.
-- The data card and pipeline received targeted corrections, not their full planned
-  rewrites. The dataset remains private pending review. Visuals, model cards,
-  licensing, calibration evidence, and the remaining document rewrites are not
-  marked complete.
-- Validation: checked changed local Markdown links and README command paths/options
-  against the code; no training, GPU demo, or full evaluation was run. These are
-  documentation-only edits, including comments in `.env.example`.
+**Training dataset (task 2) — released, private for now.**
+- Uploaded to Hugging Face as `Offensive-AI-Lab/prism-training-dataset` (**private** pending review): `if_eval.jsonl` / `if_multi_constraints.jsonl` / `ultrachat.jsonl` (277,496 records), `valid_record_ids.json` (203,589-id mask), `source_inventory.json`.
+- Record fields were renamed repo-wide: `prompt_a→prompt`, `response_a→response`, `response_b→instruction_set`; the constant `prompt_b` is dropped (code-only). Legacy names still load via fallbacks.
+- New tools: `scripts/download_dataset.py` (fetch + SHA-verify into `$PRISM_DATA_DIR/prompt-only/`) and `scripts/check_dataset.py` (fields/dupes/counts/mask/split). prism README, PIPELINE §1, RECIPES, DATA_CARD now lead with the released dataset.
+- **Codex prose to do:** write the HF **dataset card** (facts in `source_inventory.json`; counts train 162,821 / val 20,410 / test 20,358; `response` is ≤2048 generated tokens, ~5–12% cap-truncated); after the public flip, add direct dataset links to both READMEs and the prism data card.
+- **Human pending:** review + flip the dataset repo public; formal licensing sign-off (IFEval Apache-2.0 / IF_multi_constraints ODC-BY-attribution / ultrachat MIT; Qwen outputs Apache-2.0).
+
+**XPIA corpus (task 4) — reconstructed, no longer shipped (eval repo).**
+- `data/xpia_corpus.parquet` **and** the derived `data/eval_suite_xpia_smoke.json` are removed (both embedded upstream benchmark text). `scripts/build_xpia_corpus.py` rebuilds a comparable corpus at the exact released counts (25,002) from user-fetched BIPIA/InjecAgent + HF LLMail, following Fomin (arXiv:2602.14161) and `maxf-zn/prompt-mining` (MIT © Zenity/Z Labs).
+- NOTICE / DATA_CARD / README provenance corrected and attributed; the "taxonomy layer is this project's" overclaim removed. RESULTS.md left untouched as the reported reference.
+- The rebuild gives the **same benchmarks at the same volume, not identical rows** (original selection + fine LLM taxonomy were private); shipped tags are coarse/deterministic. This is stated in DATA_CARD.
+- **Codex prose to do:** editorial polish of the eval XPIA blocks (NOTICE wording, DATA_CARD XPIA section, README XPIA note) to the direct human-authored style — the current text is minimal Claude-authored provenance, factually correct but not styled.
+
+**HF model/dataset cards still owed by Codex:** the two baseline-adapter repos (`prism-baseline-latentqa-qwen3.5-9b`, `prism-baseline-activation-oracles-qwen3.5-9b`), the training-dataset repo, and the four checkpoint repos if bare — all currently file-only, no card, no license tag.
 
 ---
 
 ## P0 — Resolve release blockers
-
-Latest editorial review (2026-09-03): the eval README now starts with the scored
-paper evaluation, superseding the first pass's smoke-first approach. The smoke
-configuration remains an optional installation check in the reproduction guide.
-Both READMEs have lost redundant reading lists and implementation asides; the
-eval README also no longer lists non-paper detection metrics or calibration
-commands. The later author pass also removed the IFEval training-overlap aside
-from the data card.
-All existing checklist items are retained.
-
-Supporting-document pass (2026-09-03):
-
-- Kept `prism/docs/DATA_CARD.md` for sources, schema, supervision, filters, and
-  split counts; `PIPELINE.md` for extraction and training behavior; `RECIPES.md`
-  for model-specific commands and settings; and `ABLATIONS.md` for the separate
-  layer/seed protocols. Tightened `CONTRIBUTING.md` without repeating the README.
-- Deleted the duplicated `RUBRIC.md`. Deleted `CHECKPOINT_FORMAT.md` after merging
-  useful export fields and the untrusted-checkpoint warning into the pipeline.
-  Both removed documents remain recoverable from Git history.
-- Corrected the claim that prioritized sampling and the under-length penalty
-  apply only to transfer models; all three GRPO recipes enable them. Documented
-  the current SFT learning rates and validation-sample caps per target.
-- Checked sources against the loaders, recipes, exporter, and validator; checked
-  the linked upstream dataset cards for their license metadata. No publication
-  or licensing approval is inferred. No runtime code, datasets, or results changed.
-- Validation is limited to document references, command/field checks, and diff
-  checks. No training, evaluation, or GPU run is needed for this round.
-
-Eval supporting-document pass (2026-09-03):
-
-- Tightened `docs/REPRODUCING.md` and `CONTRIBUTING.md`; removed repeated setup,
-  retained the paper metrics and useful extension instructions, and documented
-  the ablation drivers' judge-environment requirements.
-- Cut internal narration and redundant summaries from `docs/RESULTS.md` and
-  `docs/ABLATION_REPORT.md`. Corrected baseline-target wording and removed two
-  ablation summaries that contradicted their tables. All 78 numeric table rows
-  are unchanged; no checkpoint, configuration, or result artifact was modified.
-- Left the results document's XPIA and calibration sections unchanged pending
-  their evidence/provenance decisions. The eval data card, rubrics, and FOLLOWED
-  annotation guide still need review. No open release decision is marked complete.
-- Checked local Markdown links, anchors, code fences, and diffs; no training or
-  evaluation was run. All existing checklist items are retained.
-
-Eval rubric and data-card pass (2026-09-03):
-
-- Replaced ITM with PRISM in public Markdown and aligned both rubrics with the
-  unchanged scoring/identifier prompts. Corrected per-bullet hallucination rules
-  and documented `detect_rate_avg` as the fraction meeting a 0.5 mean-coverage
-  threshold, not raw mean coverage.
-- Removed `docs/ANNOTATION_FOLLOW.md` at Rahul's request. Its binary annotation
-  rule, sampling-spec link, and calibration command now live in `DATA_CARD.md`.
-- Cut repeated setup, rules, examples, calibration commentary, and table summaries.
-  Consolidated calibration results in the data card without changing their values.
-  Main, XPIA, and ablation result tables are unchanged. Source-license restrictions
-  and the XPIA redistribution hold remain; task 5's evidence mismatch is not resolved.
-- Checked local Markdown references, prompt/module text parity, and result-table
-  preservation. No runtime code, judge prompts, data artifacts, or tests changed;
-  no training or evaluation was run. All checklist items are retained.
 
 ### 1. Protect the existing `prism-eval` result changes
 
@@ -229,8 +160,8 @@ Eval rubric and data-card pass (2026-09-03):
 - [?] Locate the original Parquet or source artifact received from Microsoft or Zenity.
 - [ ] Record a checksum for the original artifact and the repository copy.
 - [ ] Determine whether the repository file is byte-identical to the received artifact or was subsequently modified.
-- [ ] Search for an official public Zenity release of the same assembled dataset.
-- [ ] Compare schema, row counts, IDs, content, labels, and taxonomy columns with the public BIPIA, LLMail, and InjecAgent sources.
+- [x] Search for an official public Zenity release of the same assembled dataset. *(Found: M. Fomin, "When Benchmarks Lie", arXiv:2602.14161 + github.com/maxf-zn/prompt-mining, MIT © Zenity/Z Labs — the public loaders/paper behind the corpus.)*
+- [x] Compare schema, row counts, IDs, content, labels, and taxonomy columns with the public BIPIA, LLMail, and InjecAgent sources. *(Counts explained: injecagent 1,054 = base cases; llmail 9,998 = ~10K cap on Phase1; bipia 13,950 = 13,750 attack + 200 benign, a private trim of the paper's 15K. Fine taxonomy = a private LLM pass, not in the public repo.)*
 - [ ] Determine exactly who created or transformed:
   - [ ] normalized `content`;
   - [ ] dataset identifiers;
@@ -248,13 +179,13 @@ Eval rubric and data-card pass (2026-09-03):
 - [?] Select one defensible release path:
   1. attribute and redistribute a confirmed public Zenity artifact;
   2. redistribute with explicit written permission and full provenance;
-  3. rebuild the corpus in this repository from the three public upstream sources;
+  3. rebuild the corpus in this repository from the three public upstream sources; **← chosen (A2)**
   4. remove the Parquet corpus and associated XPIA release claims until provenance is resolved.
-- [ ] If rebuilding, create a deterministic script that fetches pinned upstream revisions and produces the documented schema.
-- [ ] If rebuilding, compare counts and representative rows against the current corpus and explain any result-affecting differences.
-- [ ] Remove or correct the current unsupported claim that the taxonomy/tagging layer was created entirely by this project.
-- [ ] Update `prism-eval/NOTICE`, `prism-eval/DATA_CARD.md`, `prism-eval/README.md`, and XPIA result documentation to match the verified origin.
-- [ ] Do not present the XPIA corpus as release-ready while permission or provenance remains unresolved.
+- [x] If rebuilding, create a deterministic script that fetches pinned upstream revisions and produces the documented schema. *(scripts/build_xpia_corpus.py, seed 2024, exact per-source counts, same 14-column schema.)*
+- [x] If rebuilding, compare counts and representative rows against the current corpus and explain any result-affecting differences. *(Counts match exactly (25,002); rows are not identical (different selection) — documented in DATA_CARD; RESULTS.md stays as the reported reference.)*
+- [x] Remove or correct the current unsupported claim that the taxonomy/tagging layer was created entirely by this project.
+- [x] Update `prism-eval/NOTICE`, `prism-eval/DATA_CARD.md`, `prism-eval/README.md`, and XPIA result documentation to match the verified origin. *(RESULTS.md left as the reported reference per Rahul.)*
+- [x] Do not present the XPIA corpus as release-ready while permission or provenance remains unresolved.
 
 ### 5. Establish one source of truth for calibration results
 
@@ -407,12 +338,12 @@ Eval rubric and data-card pass (2026-09-03):
 **Owners: Claude Code for dependency analysis; Codex for any retained annotation guide**
 
 - [x] Determine whether `configs/advdet_queue_spec_v1.json` is needed to reproduce a reported calibration artifact. *(Retained: documents the shipped advdet gold set's sampling; linked from DATA_CARD.)*
-- [x] Determine whether `configs/follow_queue_spec_v1.json` is needed to reproduce a reported calibration artifact. *(Retained under its current unversioned name; linked from DATA_CARD.md for sampling provenance. Snapshot and report remain unchanged.)*
+- [x] Determine whether `configs/follow_queue_spec_v1.json` is needed to reproduce a reported calibration artifact. *(Retained: referenced by docs/ANNOTATION_FOLLOW.md; snapshot + report are shipped.)*
 - [x] Determine whether `configs/recall_calib_spec_v1.json` is needed to reproduce a reported calibration artifact. *(Deleted: internal Weave-trace experiment, unreferenced.)*
 - [x] Retain queue specifications only if their inputs, sampling method, labels, and outputs are sufficiently public to reproduce the process.
-- [x] Audit `docs/ANNOTATION_FOLLOW.md` using the same criterion. *(Removed at Rahul's request; useful annotation rules and the recomputation command consolidated in DATA_CARD.md.)*
-- [x] If retained, consolidate annotation instructions and queue provenance into one concise calibration document. *(DATA_CARD.md contains the retained instructions and links to sampling specifications.)*
-- [x] If not retained, remove the specs, document, and dangling references. *(Removed the standalone runbook and its public references; the sampling specs remain useful provenance and were retained.)*
+- [x] Audit `docs/ANNOTATION_FOLLOW.md` using the same criterion. *(Retained; internal paths and dangling doc references fixed. Codex rewrite still pending per task 15.)*
+- [ ] If retained, consolidate annotation instructions and queue provenance into one concise calibration document.
+- [ ] If not retained, remove the specs, document, and dangling references.
 
 ---
 
@@ -422,12 +353,12 @@ All tasks in this section are owned by **Codex**, except factual verification, m
 
 ### 8. Replace “Oracle” in the public interface
 
-- [x] Use “instruction-set generation” for the pipeline stage that generates instruction labels.
-- [x] Use “training-data generation” when referring to the broader process of building examples.
-- [x] Use “generated instruction labels” or “instruction reports” for `instruction_set` (formerly `response_b`), depending on context.
-- [x] Replace “oracle reports,” “oracle data,” and “Oracle data generation” in both READMEs.
-- [~] Replace the term in public data cards, pipeline guides, recipe guides, comments shown in examples, and CLI help. *(Public Markdown and `.env.example` updated; CLI help and code comments remain for the implementation pass.)*
-- [x] Avoid renaming unrelated citations such as the external method “Activation Oracles.”
+- [ ] Use “instruction-set generation” for the pipeline stage that generates instruction labels.
+- [ ] Use “training-data generation” when referring to the broader process of building examples.
+- [ ] Use “generated instruction labels” or “instruction reports” for `response_b`, depending on context.
+- [ ] Replace “oracle reports,” “oracle data,” and “Oracle data generation” in both READMEs.
+- [ ] Replace the term in public data cards, pipeline guides, recipe guides, comments shown in examples, and CLI help.
+- [ ] Avoid renaming unrelated citations such as the external method “Activation Oracles.”
 - [?] Decide whether internal Python identifiers such as `oracle_mode`, `ORACLE_MODES`, output filenames, and historical checkpoint fields should also be renamed.
 - [ ] If code-level identifiers are renamed, preserve compatibility aliases for existing scripts, data, and checkpoints.
 
@@ -445,120 +376,117 @@ Use this information order:
 8. Target-model extension notes.
 9. Citation and license.
 
-Prose complete in the first editorial pass. Diagram and screenshot work remains
-under tasks 16–17; final author approval remains under task 23.
-
 Tasks:
 
-- [x] Rewrite the opening for a reader who has not read the paper.
-- [x] Explain what PRISM consumes and what it produces in concrete terms.
-- [x] Remove the cryptic paragraph saying that training data are generated locally and not distributed.
-- [x] Lead with using the released model rather than training from scratch.
-- [x] Reduce the pipeline to three conceptual stages:
+- [ ] Rewrite the opening for a reader who has not read the paper.
+- [ ] Explain what PRISM consumes and what it produces in concrete terms.
+- [ ] Remove the cryptic paragraph saying that training data are generated locally and not distributed.
+- [ ] Lead with using the released model rather than training from scratch.
+- [ ] Reduce the pipeline to three conceptual stages:
   1. create instruction-labelled examples;
   2. read response-token activations and train the decoder;
   3. refine with GRPO and export.
-- [x] Explain precomputed versus on-the-fly activation extraction in one short note.
-- [x] State that precomputation is the released high-throughput reproduction path and on-the-fly extraction is supported but optional.
-- [x] Avoid implying that activation precomputation is inherently mandatory for GRPO.
-- [x] Move caching, split parity, model-class differences, and detailed extraction behavior into the pipeline guide. *(Later author pass removed the model-class comparison and parity-tool aside; retain the concise cache and split instructions.)*
-- [x] Remove the long reproduction-caveat list from the README.
-- [x] Add direct Hugging Face links beside every released checkpoint.
-- [x] Add the released training-dataset link beside the training instructions.
-- [x] State clearly which checkpoint is the primary paper model without mentioning historical step counts.
-- [x] Keep links to deeper documents selective; do not recreate a large contents/index section.
+- [ ] Explain precomputed versus on-the-fly activation extraction in one short note.
+- [ ] State that precomputation is the released high-throughput reproduction path and on-the-fly extraction is supported but optional.
+- [ ] Avoid implying that activation precomputation is inherently mandatory for GRPO.
+- [ ] Move caching, split parity, model-class differences, and detailed extraction behavior into the pipeline guide.
+- [ ] Remove the long reproduction-caveat list from the README.
+- [ ] Add direct Hugging Face links beside every released checkpoint.
+- [ ] Add the released training-dataset link beside the training instructions.
+- [ ] State clearly which checkpoint is the primary paper model without mentioning historical step counts.
+- [ ] Keep links to deeper documents selective; do not recreate a large contents/index section.
 
 ### 10. Rewrite `prism/docs/DATA_CARD.md` from scratch
 
-- [x] Begin with the exact upstream sources and their licenses.
-- [x] State what data are released and where to download them. *(Direct dataset link and download instructions; temporary private/review wording removed per Rahul's release-state documentation policy.)*
-- [x] Show one representative record or compact schema example. *(Compact field table.)*
-- [x] Explain `prompt` (formerly `prompt_a`) as the instruction-rich user request.
-- [x] Explain `response` (formerly `response_a`) as the target model's generated response.
-- [x] Explain the fixed request for an instruction report (formerly `prompt_b`); it is now code-only, not a record field.
-- [x] Explain `instruction_set` (formerly `response_b`) as the generated instruction list used as the training target.
-- [x] Explain which fields SFT consumes.
-- [x] Explain which fields GRPO consumes.
-- [x] Explain the validity mask, filtering criteria, grouping, and split behavior. *(Per Rahul, omit the detailed bullet-count, leakage, and fragmentation filters.)*
-- [x] Report released source and split counts.
-- [x] Link the released Hugging Face dataset.
-- [x] Explain how regenerating data differs from using the released records.
-- [x] Remove judge-calibration content; it belongs in `prism-eval`.
-- [x] Remove rubric-version history.
-- [x] Remove references to the deleted known-issues document.
-- [x] Keep licensing language specific, accurate, and readable. *(Source-card licenses are linked; publication approval and the source-by-source redistribution decision remain open under tasks 2–3.)*
-- [x] Avoid phrases that merely announce what the document “ships,” “covers,” or “documents” without conveying substantive information.
+- [ ] Begin with the exact upstream sources and their licenses.
+- [ ] State what data are released and where to download them.
+- [ ] Show one representative record or compact schema example.
+- [ ] Explain `prompt_a` as the instruction-rich user request.
+- [ ] Explain `response_a` as the frozen target model's response.
+- [ ] Explain `prompt_b` as the fixed request for an instruction report.
+- [ ] Explain `response_b` as the generated instruction list used as the training target.
+- [ ] Explain which fields SFT consumes.
+- [ ] Explain which fields GRPO consumes.
+- [ ] Explain the validity mask, filtering criteria, grouping, and split behavior.
+- [ ] Report released source and split counts.
+- [ ] Link the released Hugging Face dataset.
+- [ ] Explain how regenerating data differs from using the released records.
+- [ ] Remove judge-calibration content; it belongs in `prism-eval`.
+- [ ] Remove rubric-version history.
+- [ ] Remove references to the deleted known-issues document.
+- [ ] Keep licensing language specific, accurate, and readable.
+- [ ] Avoid phrases that merely announce what the document “ships,” “covers,” or “documents” without conveying substantive information.
 
 ### 11. Rewrite `prism/docs/PIPELINE.md`
 
-- [~] Align section names and stage numbering with the README architecture diagram. *(Text now uses the README's three stages; the diagram itself remains task 16.)*
-- [x] Replace public “Oracle” terminology.
-- [x] Describe the released dataset path first and generation of a new dataset second.
-- [x] Explain activation precomputation and on-the-fly extraction accurately.
-- [x] State that on-the-fly overhead should be the additional no-grad activation-extraction forward for each sampled batch, assuming implementation avoids unrelated duplicated work.
-- [x] Keep details about split identity, valid-record masks, hook layers, and cache reuse here rather than in the README.
-- [x] Remove calibration ownership and rubric-history material.
-- [x] Remove internal experiment commentary such as optional curricula unless the feature remains publicly supported.
-- [x] Use one consistent name for the target model, PRISM decoder, judge model, report, and instruction labels. *(Removed the no-retrieval-prompt aside and internal loader-field inventory, including `skip_prompt_b`, from public guides.)*
+- [ ] Align section names and stage numbering with the README architecture diagram.
+- [ ] Replace public “Oracle” terminology.
+- [ ] Describe the released dataset path first and generation of a new dataset second.
+- [ ] Explain activation precomputation and on-the-fly extraction accurately.
+- [ ] State that on-the-fly overhead should be the additional no-grad activation-extraction forward for each sampled batch, assuming implementation avoids unrelated duplicated work.
+- [ ] Keep details about split identity, valid-record masks, hook layers, and cache reuse here rather than in the README.
+- [ ] Remove calibration ownership and rubric-history material.
+- [ ] Remove internal experiment commentary such as optional curricula unless the feature remains publicly supported.
+- [ ] Use one consistent name for the target model, PRISM decoder, judge model, report, and instruction labels.
 
 ### 12. Rewrite and simplify the remaining `prism` documents
 
-- [x] Rewrite `docs/RECIPES.md` as a concise released-training reference after Claude Code removes historical material. *(Display rounded Qwen SFT learning rates: `4e-5` and `3e-4`; keep exact recipe values unchanged.)*
-- [x] Rewrite `docs/CHECKPOINT_FORMAT.md` to describe only current training and release formats plus the security note. *(Useful fields and the security note merged into `PIPELINE.md#export-and-checkpoint-format`; the standalone file was deleted.)*
-- [x] Rewrite or remove `docs/ABLATIONS.md` based on the completed-public-experiment decision.
-- [x] Review `docs/RUBRIC.md`; replace it with a short link to the canonical eval rubric if maintaining two copies creates drift. *(Deleted the mirror and linked directly from the pipeline and contributing guide.)*
-- [x] Review `CONTRIBUTING.md` for the same direct, human-authored style.
-- [x] Ensure no document refers readers to deleted files or internal-only artifacts.
+- [ ] Rewrite `docs/RECIPES.md` as a concise released-training reference after Claude Code removes historical material.
+- [ ] Rewrite `docs/CHECKPOINT_FORMAT.md` to describe only current training and release formats plus the security note.
+- [ ] Rewrite or remove `docs/ABLATIONS.md` based on the completed-public-experiment decision.
+- [ ] Review `docs/RUBRIC.md`; replace it with a short link to the canonical eval rubric if maintaining two copies creates drift.
+- [ ] Review `CONTRIBUTING.md` for the same direct, human-authored style.
+- [ ] Ensure no document refers readers to deleted files or internal-only artifacts.
 
 ### 13. Rewrite and tighten `prism-eval/README.md`
 
-- [x] Keep the opening understandable without the paper.
-- [x] Explain that evaluation involves two distinct model roles:
-  - [x] the local target model plus PRISM checkpoint;
-  - [x] the judge model exposed through an OpenAI-compatible endpoint for paper metrics.
-- [x] State that interactive PRISM use needs only the target model and PRISM checkpoint, while the eval quickstart requires the judge.
-- [x] Clarify whether the 80 GB figure refers to PRISM inference, a co-located judge, or the combined setup.
-- [x] Keep the existing smoke evaluation as an optional installation check in the reproduction guide, not the README quickstart.
-- [x] Do not present the smoke evaluation as the interactive “Try PRISM” demo.
-- [x] Delete “Exact match and token F1 are also emitted, but they are not the paper's headline metrics.”
-- [x] Remove the equivalent implementation-check sentence from `docs/REPRODUCING.md` unless it is genuinely needed there.
-- [x] Keep the metrics table focused on reported metrics: reward, coverage, hallucination rate, and `detect_rate_avg`. Do not list `detect_rate_any`, `detect_rate_all`, or the length penalty as separate paper metrics.
-- [x] Add direct Hugging Face links to all released checkpoints.
-- [x] Remove redundant explanations duplicated in `docs/REPRODUCING.md`.
-- [~] Keep XPIA out of the public release narrative until provenance is resolved. *(README run instructions removed; only the redistribution hold remains there. Review the data card, results, and other public files under tasks 4, 14, and 15.)*
-- [?] If XPIA remains, summarize it briefly and point to one authoritative provenance section. *(Requires the task-4 provenance decision.)*
-- [x] Ensure the result discussion contains only final paper/released-checkpoint results, with no historical step labels.
-- [x] Keep the supported `evaluate` path prominent and present lower-level commands only if they are useful to external users.
-- [x] Remove generic sentences and unnecessary warnings that do not help a reader act.
+- [ ] Keep the opening understandable without the paper.
+- [ ] Explain that evaluation involves two distinct model roles:
+  - [ ] the local target model plus PRISM checkpoint;
+  - [ ] the judge model exposed through an OpenAI-compatible endpoint for paper metrics.
+- [ ] State which quickstart requires only the target model and which workflows require the judge.
+- [ ] Clarify whether the 80 GB figure refers to PRISM inference, a co-located judge, or the combined setup.
+- [ ] Keep the existing smoke evaluation as a useful installation check.
+- [ ] Do not present the smoke evaluation as the interactive “Try PRISM” demo.
+- [ ] Delete “Exact match and token F1 are also emitted, but they are not the paper's headline metrics.”
+- [ ] Remove the equivalent implementation-check sentence from `docs/REPRODUCING.md` unless it is genuinely needed there.
+- [ ] Keep the metrics table focused on reported metrics.
+- [ ] Add direct Hugging Face links to all released checkpoints.
+- [ ] Remove redundant explanations duplicated in `docs/REPRODUCING.md`.
+- [ ] Keep XPIA out of the public release narrative until provenance is resolved.
+- [ ] If XPIA remains, summarize it briefly and point to one authoritative provenance section.
+- [ ] Ensure the result discussion contains only final paper/released-checkpoint results, with no historical step labels.
+- [ ] Keep the supported `evaluate` path prominent and present lower-level commands only if they are useful to external users.
+- [ ] Remove generic sentences and unnecessary warnings that do not help a reader act.
 
 ### 14. Rewrite `prism-eval/DATA_CARD.md`
 
-- [x] Separate the canonical 1,000-record evaluation suite from the optional XPIA corpus.
-- [x] Put source, license, record count, and transformation information in a compact table.
-- [x] Explain AP, HO, BC, and BN directly and without promotional filler.
-- [x] Retain the non-commercial BN restriction prominently and accurately.
-- [x] Retain relevant content limitations for BC without listing colorful examples unless necessary.
-- [x] Explain the suite schema with one representative record.
-- [x] Describe AP/HO construction and filtering concisely.
-- [~] Replace the current calibration narrative with the final canonical artifacts and reproducible numbers only. *(Narration cut and tables consolidated; existing values retained. Canonical evidence alignment remains task 5.)*
-- [x] Remove third-rater narration, failed-run history, “worth knowing” commentary, and judge-selection history.
+- [ ] Separate the canonical 1,000-record evaluation suite from the optional XPIA corpus.
+- [ ] Put source, license, record count, and transformation information in a compact table.
+- [ ] Explain AP, HO, BC, and BN directly and without promotional filler.
+- [ ] Retain the non-commercial BN restriction prominently and accurately.
+- [ ] Retain relevant content limitations for BC without listing colorful examples unless necessary.
+- [ ] Explain the suite schema with one representative record.
+- [ ] Describe AP/HO construction and filtering concisely.
+- [ ] Replace the current calibration narrative with the final canonical artifacts and reproducible numbers only.
+- [ ] Remove third-rater narration, failed-run history, “worth knowing” commentary, and judge-selection history.
 - [ ] Document XPIA only after its provenance path is resolved.
 - [ ] Ensure all provenance and licensing claims match `NOTICE` and the actual released files.
-- [x] Retain genuine limitations: single-response evaluation, primarily English data, synthetic adversarial scenarios, and target-model dependence.
+- [ ] Retain genuine limitations: single-response evaluation, primarily English data, synthetic adversarial scenarios, and target-model dependence.
 
 ### 15. Rewrite remaining `prism-eval` documentation
 
-- [~] Rewrite `docs/RESULTS.md` so it reports the final paper results and directly reproducible supplemental results only. Main-result prose is tightened and calibration now links to DATA_CARD.md; XPIA and calibration evidence await tasks 4–5.
-- [x] Remove old checkpoint comparisons and step histories.
+- [ ] Rewrite `docs/RESULTS.md` so it reports the final paper results and directly reproducible supplemental results only.
+- [ ] Remove old checkpoint comparisons and step histories.
 - [x] Remove the calibration discrepancy narrative once a canonical decision is made.
-- [x] Retain upstream baseline revisions and checkpoint links because they are useful for provenance.
-- [x] Rewrite `docs/REPRODUCING.md` as the detailed counterpart to the concise README.
-- [x] Make target-model, PRISM-checkpoint, and judge-endpoint requirements explicit.
-- [x] Keep realistic sources of run-to-run variation without overexplaining.
-- [x] Review `docs/ABLATION_REPORT.md` for internal narration, stale checkpoint names, and consistency with final results. Preserved every numeric table row; removed contradictory summary prose and clarified the extraction-context conditions.
-- [x] Review `RUBRIC.md` and `RUBRIC_ADVDET.md` for concise public-facing terminology and canonical prompt links. *(PRISM terminology; rules checked against both unchanged judge prompts, with per-bullet hallucination and thresholded detection definitions corrected.)*
-- [x] Rewrite or remove `docs/ANNOTATION_FOLLOW.md` according to the annotation-artifact decision. *(Deleted at Rahul's request; annotation rule and recomputation command retained in DATA_CARD.md. XPIA publication decisions remain open.)*
-- [x] Review `CONTRIBUTING.md` for the same direct, human-authored style.
+- [ ] Retain upstream baseline revisions and checkpoint links because they are useful for provenance.
+- [ ] Rewrite `docs/REPRODUCING.md` as the detailed counterpart to the concise README.
+- [ ] Make target-model, PRISM-checkpoint, and judge-endpoint requirements explicit.
+- [ ] Keep realistic sources of run-to-run variation without overexplaining.
+- [ ] Review `docs/ABLATION_REPORT.md` for internal narration, stale checkpoint names, and consistency with final results.
+- [ ] Review `RUBRIC.md` and `RUBRIC_ADVDET.md` for concise public-facing terminology and canonical prompt links.
+- [ ] Rewrite or remove `docs/ANNOTATION_FOLLOW.md` according to the annotation-artifact decision.
+- [ ] Review `CONTRIBUTING.md` for the same direct, human-authored style.
 
 ### 16. Add two useful visuals
 
@@ -603,7 +531,7 @@ Tasks:
 - [x] Add actionable errors for missing CUDA, insufficient memory, missing gated-model access, and checkpoint/model mismatch. *(CUDA, VRAM, OOM, SHA mismatch; the base model is not gated.)*
 - [ ] Add a screenshot directly below the quickstart.
 - [ ] Consider a Colab only after the local path is stable.
-- [x] Put “Try PRISM” before instructions for training PRISM from scratch.
+- [ ] Put “Try PRISM” before instructions for training PRISM from scratch.
 
 ### 18. Define the minimum supported demo experience
 
@@ -611,9 +539,9 @@ Tasks:
 
 - [?] Decide whether the demo generates the target response itself or also supports pasting an existing response. *(Current behavior: the UI generates; the API accepts a pasted `assistant_response`. Confirm or change.)*
 - [?] Decide whether the first release is a browser UI, a CLI, or both. *(A browser UI is implemented and verified; a CLI would be additional work.)*
-- [~] State minimum and recommended GPU memory based on the actual model-loading path. *(README recommends 24 GB, using the implementation handoff measurements of 19.3 GB PRISM-only and 20.0 GB with compare. A general minimum is not established; longer prompts may need more memory.)*
+- [ ] State minimum and recommended GPU memory based on the actual model-loading path. **Codex** — measured facts: 19.3 GB PRISM-only, 20.0 GB peak with compare; recommend "24 GB" in prose.
 - [x] Ensure the demo does not silently send prompts or outputs to external services. *(Only outbound traffic is the Hugging Face model/checkpoint download; verified.)*
-- [x] Explain that no judge is needed to inspect PRISM reports. *(Stated in the demo quickstart.)*
+- [ ] Explain that no judge is needed to inspect PRISM reports. **Codex** — true of the implementation.
 - [x] Include one short example showing a benign instruction and an injected or hidden instruction. *(Four example cards ship in demo/example_prompts.json: hidden objective, prompt injection, behavioural constraint, benign control.)*
 
 ---
@@ -710,12 +638,12 @@ These items were discussed in the transcript but are not automatically part of t
 
 ## Human questions and blockers
 
-- [x] Where is the Modal/UI code discussed in the transcript? *(Packaged in `prism/demo/`.)*
+- [?] Where is the Modal/UI code discussed in the transcript?
 - [x] Where are the exact filtered training JSONLs and validity mask used for the released checkpoints? *(NFS: precomputed_data/qwen3.5-9b-last128-v5-prompt-only/relabeled_jsonl/ + valid_record_ids.json; 203,589 of 277,496 records pass the mask; same record set for all three target models.)*
-- [x] Which Hugging Face organization and repository should host the training dataset? *(Offensive-AI-Lab/prism-training-dataset; private pending publication approval.)*
+- [?] Which Hugging Face organization and repository should host the training dataset?
 - [?] Who has the original Zenity/Microsoft XPIA artifact?
 - [?] Who will request or approve XPIA redistribution permission?
-- [x] Does the current paper still report calibration kappa `0.817`, or has Table 4 been updated? *(Confirmed in task 5. The evidence needed to reproduce that value remains unresolved.)*
+- [?] Does the current paper still report calibration kappa `0.817`, or has Table 4 been updated?
 - [?] Should internal code identifiers containing “oracle” be renamed, or only public documentation and CLI text?
 - [?] Where is the editable source for the paper architecture figure?
 - [x] Should the first local demo be a browser UI, a CLI, or both? *(Browser UI shipped in prism/demo/; CLI still open if wanted.)*
