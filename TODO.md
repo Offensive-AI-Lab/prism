@@ -624,6 +624,67 @@ Tasks:
 
 ---
 
+## P5 — Pre-release validation (added 2026-09-07; Claude Code drives)
+
+Rigorous end-to-end smoke testing on real GPU + judge LLM + live artifact pulls
+before the public flip, because the release touched load-bearing paths (the
+`prompt_a→prompt` field rename across the training pipeline, on-the-fly GRPO,
+the dataset release, the XPIA reconstruction, prompt renames, calibration
+consolidation).
+
+**Methodology — "no-clue" agents.** Each tier is run by a FRESH-CONTEXT agent
+given only a clean clone and the repo's own README/docs — no insider knowledge.
+Where the agent gets stuck is where a real user/tester gets stuck: those spots
+are friction to fix (missing dep, unclear command, wrong path, absent env var),
+not just test failures. Test from clones of the PUBLIC repos wherever possible.
+
+**Resources:** up to 6 GPUs; judge LLM via `scripts/serve_judge.sh`
+(gemma-4-31B-it); HF checkpoints/adapters (public) + dataset (private → token
+until flipped). As of 2026-09-07: local GPU free; no judge live; dataset repo
+private; `prism-eval` GitHub public but `prism` still private (its README link
+to prism 404s for outsiders — a final-gate item).
+
+### Tier 0 — offline / CPU
+- [ ] 0.1 `uv sync --extra dev` (+ demo, bertscore) on clean clones, both repos — resolves cleanly
+- [ ] 0.2 `uv run pytest -q` both repos — prism 144 / eval 203, 0 fail
+- [ ] 0.3 wheel build; renamed prompts (`scoring.txt`, `adversarial_identifier.txt`) packaged
+- [ ] 0.4 every documented command + relative link in READMEs/docs resolves
+- [ ] 0.5 import every module from outside the repo (exercises legacy-name fallbacks)
+
+### Tier 1 — artifact pulls (network, no GPU)
+- [ ] 1.1 `download_dataset.py` (token while private) → `check_dataset.py` = "matches the release" (277,496; 162,821/20,410/20,358)
+- [ ] 1.2 checkpoint download + SHA (eval `download_weights.py`; demo auto-download) — 4 digests match
+- [ ] 1.3 baseline adapter auto-download — 2 SHAs match
+- [ ] 1.4 XPIA rebuild from clean clones (BIPIA+InjecAgent clone, HF LLMail) → 25,002, exact per-source counts
+
+### Tier 2 — GPU, no judge
+- [ ] 2.1 SFT smoke, cache path — best.pt + sane val loss
+- [ ] 2.2 SFT smoke, on-the-fly (`PRISM_ON_THE_FLY=1`)
+- [ ] 2.3 SFT smoke FROM the downloaded dataset (the "train right away" promise)
+- [ ] 2.4 layer-ablation smoke (`SMOKE=1 LAYER=16`)
+- [ ] 2.5 demo PRISM-only — chat + retrieval recovers the instruction; ~20 GB VRAM
+- [ ] 2.6 demo compare — first-click downloads + PRISM/LatentQA/AO all answer; ~20 GB peak
+
+### Tier 3 — GPU + judge
+- [ ] 3.1 GRPO smoke, cache — 50 steps, judge 0 errors, reward moves
+- [ ] 3.2 GRPO smoke, on-the-fly
+- [ ] 3.3 eval end-to-end: download ckpt → `evaluate` smoke suite → judge scoring parses
+- [ ] 3.4 XPIA end-to-end: rebuilt corpus → `fetch_xpia_evals` (judge extraction) → `evaluate`
+- [ ] 3.5 calibration reproduces: `calibrate_judge.py` + `calibrate_advdet.py` (advdet 49/50, no crash)
+
+### Tier 4 — reproduction spot-checks (confidence, optional)
+- [ ] 4.1 ~200-step GRPO from released SFT init — reward climbs, no collapse
+- [ ] 4.2 250-record eval slice with released GRPO ckpt — per-setting coverage within noise of RESULTS
+- [ ] 4.3 `analyze_xpia.py` on a rebuilt-corpus eval — tables render (numbers differ from RESULTS, expected)
+
+### Final gates (before public)
+- [ ] flip `prism` GitHub public + dataset repo public; re-run 1.1–1.4 fully anonymous
+- [ ] six HF repos public with matching SHAs; arXiv link live
+- [ ] delete `TODO.md` from prism + squash so the internal checklist is out of public history
+- [ ] Codex model/dataset cards in place
+
+---
+
 ## External or later work
 
 These items were discussed in the transcript but are not automatically part of the two-repository cleanup.
