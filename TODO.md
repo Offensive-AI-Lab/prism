@@ -672,11 +672,13 @@ to prism 404s for outsiders — a final-gate item).
 **Tier 2 outcome (2026-09-07):** all pass, zero code fixes. The field rename did not break any training path — cache, on-the-fly, and ablation all SFT-DONE with sane val loss on the freshly-downloaded released dataset; the demo works end to end (PRISM-only + 3-way compare) with correct hidden-objective recovery at ~20 GB. **For Codex (demo README):** document `--port` / `--host` / `--checkpoint-dir`; state that first launch needs network + HF but no login for the public repos; note `uv sync --extra demo` is self-contained (pass `--extra demo --extra dev` for both) — the recurring non-additive-extra gotcha (also Tier 0); optionally a brief note that a cached base model makes cold-start ~35 s vs the "~10 min" first-download estimate.
 
 ### Tier 3 — GPU + judge
-- [ ] 3.1 GRPO smoke, cache — 50 steps, judge 0 errors, reward moves
-- [ ] 3.2 GRPO smoke, on-the-fly
-- [ ] 3.3 eval end-to-end: download ckpt → `evaluate` smoke suite → judge scoring parses
-- [ ] 3.4 XPIA end-to-end: rebuilt corpus → `fetch_xpia_evals` (judge extraction) → `evaluate`
-- [ ] 3.5 calibration reproduces: `calibrate_judge.py` + `calibrate_advdet.py` (advdet 49/50, no crash)
+- [x] 3.1 GRPO smoke, cache — RL DONE, 50 steps, 0 judge errors
+- [x] 3.2 GRPO smoke, on-the-fly — RL DONE, 50 steps, 0 judge errors
+- [x] 3.3 eval end-to-end with judge — coverage + adversarial-detection metrics written (renamed scoring.txt/adversarial_identifier.txt parse)
+- [x] 3.4 XPIA end-to-end — build corpus (25,002) → judge-extract 8-record suite (3 sources) → judge-scored eval; summary written
+- [x] 3.5 calibration — calibrate_judge reproduces 0.8002/0.8239; calibrate_advdet 49/50 (schema fix holds)
+
+**Tier 3 outcome (2026-09-07):** all pass with a live gemma-4-31B-it judge; no code fixes. GRPO (both paths) runs judge-scored with 0 judge errors after the rename; the eval scoring path and the whole XPIA pipeline work end to end; calibration reproduces the shipped numbers. **Infra note (not release-blocking):** the internal `~/itm-eval-suite/vllm-service/serve_gemma.sh` used `uv run vllm` which failed to find the binary on a compute node — I launched via `~/.venv-vllm/bin/vllm` directly. The PUBLIC path is `scripts/serve_judge.sh` (creates its own `~/.venv-vllm` and calls `$SERVE_VENV/bin/vllm`), which avoids that failure mode; worth one clean launch-test of the public script before release, but the model+args are proven (this judge served all of Tier 3).
 
 ### Tier 4 — reproduction spot-checks (confidence, optional)
 - [ ] 4.1 ~200-step GRPO from released SFT init — reward climbs, no collapse
