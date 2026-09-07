@@ -12,6 +12,9 @@ Usage:
     uv run python scripts/download_dataset.py                  # dest = $PRISM_DATA_DIR/prompt-only
     uv run python scripts/download_dataset.py --dest /data/prompt-only
 
+If the dataset repo is still private, set HF_TOKEN first (or pass --token);
+once it is public no token is needed.
+
 After this, every recipe trains directly (the activation cache is built
 automatically on first run); scripts/check_dataset.py re-validates the
 records, counts and split membership at any time.
@@ -47,12 +50,14 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--dest", default=None,
                     help="Target dataset directory (default: $PRISM_DATA_DIR/prompt-only)")
+    ap.add_argument("--token", default=os.environ.get("HF_TOKEN"),
+                    help="HF token, if the dataset repo is gated/private (default: $HF_TOKEN)")
     args = ap.parse_args()
     dest = Path(args.dest) if args.dest else None
     if dest is None:
         data_dir = os.environ.get("PRISM_DATA_DIR")
         if not data_dir:
-            print("Set PRISM_DATA_DIR or pass --dest.", file=sys.stderr)
+            print("Set PRISM_DATA_DIR (e.g. export PRISM_DATA_DIR=./prism-data) or pass --dest.", file=sys.stderr)
             return 1
         dest = Path(data_dir) / "prompt-only"
 
@@ -64,7 +69,7 @@ def main() -> int:
         target = target_dir / fname
         if not target.exists():
             print(f"downloading {REPO_ID}/{fname} -> {target}")
-            hf_hub_download(repo_id=REPO_ID, filename=fname, repo_type="dataset",
+            hf_hub_download(repo_id=REPO_ID, filename=fname, repo_type="dataset", token=args.token,
                             local_dir=str(target_dir))
         got = sha256_of(target)
         if got != digest:
