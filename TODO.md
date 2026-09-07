@@ -654,10 +654,12 @@ to prism 404s for outsiders — a final-gate item).
 **Tier 0 outcome (2026-09-07):** all pass, zero correctness failures. Newcomer friction found & fixed: (1) READMEs never documented the test command → added a Development section to both; (2) eval forced a CUDA torch build on CPU boxes → dropped the cu128 index (now consistent with prism); (3) a stale `requests`/urllib3 import warning on every run → pinned `requests>=2.32`. Remaining ~719 pytest warnings are Pydantic-deprecation noise from the `weave` dependency (not our code), left as-is. Pushed eval ee5dda5, prism c64d2e9.
 
 ### Tier 1 — artifact pulls (network, no GPU)
-- [ ] 1.1 `download_dataset.py` (token while private) → `check_dataset.py` = "matches the release" (277,496; 162,821/20,410/20,358)
-- [ ] 1.2 checkpoint download + SHA (eval `download_weights.py`; demo auto-download) — 4 digests match
-- [ ] 1.3 baseline adapter auto-download — 2 SHAs match
-- [ ] 1.4 XPIA rebuild from clean clones (BIPIA+InjecAgent clone, HF LLMail) → 25,002, exact per-source counts
+- [x] 1.1 dataset download → check_dataset = "matches the release exactly" (277,496; 162,821/20,410/20,358) *(added --token/$HF_TOKEN passthrough; anonymous once public)*
+- [x] 1.2 checkpoint download + SHA — `prism-qwen3.5-9b-grpo` fetched anonymously, checksum OK (no token needed)
+- [x] 1.3 baseline adapters — 4/4 files SHA-match; added standalone `scripts/download_baselines.py` (no-GPU fetch+verify, was demo/GPU-only)
+- [x] 1.4 XPIA rebuild from clean clones → 25,002 (bipia 13,750+200, llmail 9,998, injecagent 1,054); noted BIPIA is clone-only (do not pip install)
+
+**Tier 1 outcome (2026-09-07):** all pass; the public/private access model verified (dataset 401 private, checkpoints+adapters anonymous). Friction fixed: (1) dataset script had no token path → added `--token`/$HF_TOKEN + docstring note; (2) baseline adapters were fetchable only via the GPU demo path → added `scripts/download_baselines.py`; (3) BIPIA clone-vs-install ambiguity → header note. **For Codex:** the prism README data step should mention HF_TOKEN while the dataset repo is private, repeat the `export PRISM_DATA_DIR=...` in that section, and the demo README can point at `download_baselines.py`. Pushed prism a6ae88e, eval 4a961e6.
 
 ### Tier 2 — GPU, no judge
 - [ ] 2.1 SFT smoke, cache path — best.pt + sane val loss
