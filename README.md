@@ -140,6 +140,16 @@ loader, attention backend, and LoRA scope. Check its chat template with
 `uv run python scripts/check_chat_template.py <profile-name>`, then add
 matching SFT and GRPO recipes and an exporter model tag.
 
+## Development
+
+```bash
+uv sync --extra dev          # test dependencies (installs pytest)
+uv run pytest tests -q       # CPU-only; no GPU, model, or judge needed
+```
+
+`uv sync` (and each `--extra`) installs only that group, so run the line above
+to get the test tools even after `uv sync --extra demo`.
+
 ## Citation
 
 ```bibtex
