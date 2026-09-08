@@ -234,7 +234,7 @@ squash approval for both repositories.
 
 - [x] Confirm that no production training path imports `prism.calibration`.
 - [x] Compare `src/prism/calibration/` with the calibration code in `prism-eval`.
-- [x] Identify any unique operation that is still needed for paper reproduction. *(None — prism-eval's calibrate_judge.py + shipped gold covers it; rederive_rewards moved to prism.rl as a reward-weight tool.)*
+- [x] Identify any unique operation that is still needed for paper reproduction. *(None — prism-eval's calibrate_judge.py and shipped gold cover it.)*
 - [x] Move genuinely needed unique functionality into `prism-eval` with an appropriate public interface. *(Nothing needed moving.)*
 - [x] Remove `src/prism/calibration/` from `prism` once dependencies are resolved.
 - [x] Remove the `calibration` optional dependency group from `prism/pyproject.toml` if no longer needed.
@@ -277,8 +277,9 @@ squash approval for both repositories.
 **Owner: Claude Code**
 
 - [x] Retain the dataset generation and cleaning scripts if they can produce a documented new dataset.
-- [x] Retain activation extraction and on-the-fly parity tools if they support documented public workflows.
-- [x] Retain checkpoint export and chat-template validation tools.
+- [x] Retain activation extraction tools that support documented public workflows; remove the development-only cache/on-the-fly parity probe.
+- [x] Retain checkpoint export; remove the model-porting chat-template preflight from the release surface.
+- [x] Remove the undocumented reward-trace rewriting utility; it is not part of training or paper reproduction.
 - [x] Audit `scripts/analyze_judge_traces.py`; retain only if it supports a documented GRPO debugging or reproduction workflow. *(Retained: documented in PIPELINE §4.)*
 - [x] Audit `prism.rl.build_hard_ids`; retain only if the hard-example curriculum remains a supported public feature. *(Retained: public CLI + config + PIPELINE mention.)*
 - [x] Remove references to tools that are retained solely for internal experiment management.

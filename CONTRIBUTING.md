@@ -21,9 +21,9 @@ or a live judge endpoint.
 
 ## Target models
 
-Follow [Adding a target model](README.md#adding-a-target-model). Keep loader,
-attention, tokenizer, and LoRA adaptations in `src/prism/target_models.py`;
-document model-specific memory or kernel requirements there.
+Keep loader, attention, tokenizer, and LoRA adaptations in
+`src/prism/target_models.py`. Add tests for assumptions that affect response
+boundaries, and document model-specific memory or kernel requirements.
 
 ## Data and scoring
 

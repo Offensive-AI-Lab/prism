@@ -196,15 +196,9 @@ RL_CONFIG = {
     # length_penalty: λ * max(0, n_itm_bullets − k · n_gt_bullets), guards against
     # padding ITM reports with extra bullets to farm partial credit.
     #
-    # Weights tilted toward recall (2.5× hallucination) — for our SFT-on-rules
-    # data, missing a GT instruction is the more costly failure mode. Scaled
-    # so the theoretical max reward is 1.0 (perfect recall, zero hallucination,
-    # no length penalty) — cleaner interpretation than the previous 0.6 cap.
-    # Length-penalty λ bumped 0.10 → 0.15 to keep the bullet-inflation guard
-    # roughly constant in proportion to the recall ceiling (was 0.10/0.60 ≈
-    # 17%, now 0.15/1.00 = 15%). Rerun prism.rl.rederive_rewards
-    # after changing these knobs to update existing judge_scores.jsonl in
-    # place (no LLM calls needed).
+    # The released weights favor instruction coverage over hallucination; the
+    # theoretical maximum is 1.0 for full coverage with no hallucination or
+    # length penalty.
     "instruction_weight": 1.0,
     "hallucination_weight": 0.4,
     "length_penalty_enabled": True,

@@ -139,13 +139,6 @@ The export removes training state and produces a checkpoint for `prism-eval`.
 [Released recipes](docs/RECIPES.md) lists the training settings and corresponding
 Gemma and Ministral commands.
 
-## Adding a target model
-
-Add a profile in `src/prism/target_models.py` defining the model ID, hook layer,
-loader, attention backend, and LoRA scope. Check its chat template with
-`uv run python scripts/check_chat_template.py <profile-name>`, then add
-matching SFT and GRPO recipes and an exporter model tag.
-
 ## Citation
 
 ```bibtex
