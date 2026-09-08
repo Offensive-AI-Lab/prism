@@ -154,7 +154,7 @@ squash approval for both repositories.
 - [~] Exclude any source or field that cannot legally be redistributed. *(No exclusion is proposed by the current audit; revisit if legal review rejects a source or field.)*
 - [ ] If a source must be excluded, document which source is absent and provide a regeneration path for users with lawful access.
 - [x] Produce a machine-readable source inventory with source name, upstream URL, revision, license, included fields, transformations, and redistribution decision. *(source_inventory.json.)*
-- [x] Create a clear Hugging Face dataset card covering sources, licenses, transformations, filtering, splits, intended use, and limitations. *(`huggingface/prism-training-dataset/README.md`; published on Hugging Face.)*
+- [x] Create and publish a clear Hugging Face dataset card covering sources, licenses, transformations, filtering, splits, intended use, and limitations.
 - [x] Do not imply that being hosted on Hugging Face automatically grants redistribution rights.
 - [x] Ensure `LICENSE`, `NOTICE`, repository data cards, and the Hugging Face dataset card agree. *(Added the repository NOTICE and field-level multi-license wording; the Hub card is published, while final legal approval remains pending.)*
 
