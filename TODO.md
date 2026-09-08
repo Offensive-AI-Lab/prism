@@ -66,10 +66,10 @@ Pending writing (Codex), in suggested order:
 
 1. Both README prose rewrites and the demo screenshot are complete. The two
    task-16 visuals still need to be added.
-2. **Model cards + license tags for the two new HF baseline-adapter repos**
-   (currently file-only, no card, no license metadata) and for the four
-   checkpoint repos. Check existing cards against current checkpoint digests,
-   usage instructions, citations, and license metadata as well as adding missing cards.
+2. **Publish the reviewed Hugging Face cards.** Source cards for the training
+   dataset, four PRISM checkpoints, and two baseline adapters are complete under
+   `huggingface/`. The six public model repositories still need the new cards
+   uploaded; the dataset remains private pending approval.
 3. Finish task 8 CLI terminology. Both repos' supporting docs have been tightened;
    the eval rubrics now follow the canonical judge prompts, and the FOLLOWED
    runbook has been removed. XPIA and calibration evidence decisions still block
@@ -149,15 +149,15 @@ squash approval for both repositories.
 - [x] Verify the exact dataset card, license, and redistribution terms for `google/IFEval`. *(apache-2.0, rev 966cd89545d6.)*
 - [x] Verify the exact dataset card, license, and redistribution terms for `allenai/IF_multi_constraints_upto5`. *(odc-by — attribution required, rev 2e3a77407b7f.)*
 - [x] Verify the exact dataset card, license, and redistribution terms for `HuggingFaceH4/ultrachat_200k`. *(mit, rev 8049631c405a.)*
-- [x] Verify the terms governing the target model's generated `response_a` and `response_b` outputs. *(Qwen3.5 is Apache-2.0; outputs unencumbered.)*
+- [~] Verify the terms governing the target model's generated `response_a` and `response_b` outputs. *(Qwen3.5 is Apache-2.0, but the model license alone does not settle rights in every generated output. The public wording licenses project-generated fields only to the extent the authors hold applicable rights; human/legal approval remains pending.)*
 - [x] Record the exact upstream dataset revision or commit where practical. *(In source_inventory.json, shipped with the dataset.)*
-- [ ] Determine separately whether prompts, generated responses, and derived labels may be redistributed.
-- [ ] Exclude any source or field that cannot legally be redistributed.
+- [~] Determine separately whether prompts, generated responses, and derived labels may be redistributed. *(Source terms and field-level treatment are documented in the data card; final human/legal approval remains necessary, particularly for third-party model output in IF Multi-Constraints.)*
+- [~] Exclude any source or field that cannot legally be redistributed. *(No exclusion is proposed by the current audit; revisit if legal review rejects a source or field.)*
 - [ ] If a source must be excluded, document which source is absent and provide a regeneration path for users with lawful access.
 - [x] Produce a machine-readable source inventory with source name, upstream URL, revision, license, included fields, transformations, and redistribution decision. *(source_inventory.json.)*
-- [ ] Create a clear Hugging Face dataset card covering sources, licenses, transformations, filtering, splits, intended use, and limitations.
-- [ ] Do not imply that being hosted on Hugging Face automatically grants redistribution rights.
-- [ ] Ensure `LICENSE`, `NOTICE`, repository data cards, and the Hugging Face dataset card agree.
+- [x] Create a clear Hugging Face dataset card covering sources, licenses, transformations, filtering, splits, intended use, and limitations. *(`huggingface/prism-training-dataset/README.md`; upload pending.)*
+- [x] Do not imply that being hosted on Hugging Face automatically grants redistribution rights.
+- [x] Ensure `LICENSE`, `NOTICE`, repository data cards, and the Hugging Face dataset card agree. *(Added the repository NOTICE and field-level multi-license wording; final legal approval and Hub publication remain pending.)*
 
 ### 4. Resolve the provenance of `prism-eval/data/xpia_corpus.parquet`
 
@@ -680,7 +680,7 @@ Validation was run from clean environments on 2026-09-07.
 - [ ] Make the prism repository and training dataset public, then repeat anonymous artifact downloads.
 - [ ] Confirm the dataset, four checkpoint repositories, and two baseline-adapter repositories are public with matching digests.
 - [ ] Remove this internal TODO and perform the approved history cleanup before publication.
-- [ ] Publish the reviewed model and dataset cards.
+- [~] Publish the reviewed model and dataset cards. *(Seven source cards are ready under `huggingface/`; live Hub updates require a signed-in Hugging Face session and publication confirmation.)*
 
 ---
 

@@ -1,0 +1,19 @@
+PRISM
+Copyright 2026 The PRISM authors
+(Gilad Gressel, Rahul Pankajakshan, Julia Diament, Efim Hudis,
+ Krishnashree Achuthan, Yisroel Mirsky)
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+The local demo includes adapted code from:
+
+  * LatentQA (https://github.com/aypan17/latentqa), Apache-2.0.
+  * Activation Oracles (https://github.com/adamkarvonen/activation_oracles),
+    MIT, Copyright (c) 2025 Adam Karvonen.
+
+Their license texts are retained under demo/third_party/.
+
+The separately published training dataset contains prompts derived from
+google/IFEval (Apache-2.0), allenai/IF_multi_constraints_upto5
+(ODC-By-1.0), and HuggingFaceH4/ultrachat_200k (MIT). See
+docs/DATA_CARD.md and the dataset's source_inventory.json.

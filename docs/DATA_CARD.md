@@ -83,3 +83,21 @@ paraphrase generation, and model-based filtering can change the resulting data.
 
 The labels can contain Qwen3.5-9B's errors and omissions, and the validity mask
 filters all three splits.
+
+## License
+
+This is a multi-license dataset. The `prompt` field retains the terms of its
+source dataset:
+
+| Source key | License |
+|---|---|
+| `if_eval` | Apache-2.0 |
+| `if_multi_constraints` | ODC-By-1.0 |
+| `ultrachat` | MIT |
+
+The PRISM authors release the project-generated `response`, `instruction_set`,
+metadata, and validity mask under Apache-2.0 to the extent that they hold the
+applicable rights. This does not replace the source terms. In particular, the
+Ai2 source card notes that some records contain third-party model output subject
+to separate terms. Exact upstream revisions and transformations are recorded in
+the dataset's `source_inventory.json`.

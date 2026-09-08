@@ -162,7 +162,8 @@ matching SFT and GRPO recipes and an exporter model tag.
 
 ## License
 
-Project code is licensed under the [Apache License 2.0](LICENSE). Vendored
+Project code and PRISM-authored checkpoint files are licensed under the
+[Apache License 2.0](LICENSE). Target-model weights are not included and remain
+under their respective licenses. The training dataset contains material under
+multiple source licenses; see the [data card](docs/DATA_CARD.md). Vendored
 baseline code retains the licenses in [demo/third_party/](demo/third_party/).
-Target models and source datasets retain their own licenses; see the
-[data card](docs/DATA_CARD.md).
