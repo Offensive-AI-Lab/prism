@@ -27,6 +27,12 @@ Open [localhost:7860](http://127.0.0.1:7860), choose an example or enter your ow
 prompt, and generate a response. Then ask PRISM to recover the instructions
 from that response's activations.
 
+![PRISM local demo](docs/demo.png)
+
+The demo follows the pipeline from left to right: generate a target-model
+response, inspect the response-token span used for activation extraction, and
+recover the instruction set with PRISM.
+
 On first launch, the demo downloads Qwen3.5-9B (about 18 GB) and the two Qwen
 PRISM checkpoints (about 266 MB each). The target model uses the Hugging Face
 cache; PRISM checkpoints go in `./checkpoints`. Change the latter with

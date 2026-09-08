@@ -64,8 +64,8 @@ need work or a decision. The writing can now refer to these implemented features
 
 Pending writing (Codex), in suggested order:
 
-1. Both README prose rewrites are complete in the first editorial pass below.
-   The demo screenshot and the two task-16 visuals still need to be added.
+1. Both README prose rewrites and the demo screenshot are complete. The two
+   task-16 visuals still need to be added.
 2. **Model cards + license tags for the two new HF baseline-adapter repos**
    (currently file-only, no card, no license metadata) and for the four
    checkpoint repos. Check existing cards against current checkpoint digests,
@@ -538,7 +538,7 @@ Tasks:
 - [x] Use predictable model-cache and checkpoint directories. *(HF cache + ./checkpoints / PRISM_DEMO_CHECKPOINT_DIR.)*
 - [x] Provide one supported launch command.
 - [x] Add actionable errors for missing CUDA, insufficient memory, missing gated-model access, and checkpoint/model mismatch. *(CUDA, VRAM, OOM, SHA mismatch; the base model is not gated.)*
-- [ ] Add a screenshot directly below the quickstart.
+- [x] Add a screenshot directly below the quickstart. *(`docs/demo.png`, with a concise workflow caption.)*
 - [ ] Consider a Colab only after the local path is stable.
 - [x] Put “Try PRISM” before instructions for training PRISM from scratch.
 
