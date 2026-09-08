@@ -70,10 +70,11 @@ Pending writing (Codex), in suggested order:
    training dataset, four PRISM checkpoints, and two baseline adapters are live.
    The dataset repository remains private pending approval to make it public.
 3. Finish task 8 CLI terminology. Both repos' supporting docs have been tightened;
-   the eval rubrics now follow the canonical judge prompts, and the FOLLOWED
-   runbook has been removed. XPIA and calibration evidence decisions still block
-   completion of tasks 14–15. Task 16 visuals and task 23 final editorial review
-   remain open.
+   the eval rubrics follow the canonical paper prompts, and the optional
+   post-paper behavior analysis now has a focused method and reproduction guide.
+   Indirect prompt injection provenance and paper-calibration evidence decisions
+   still block completion of tasks 14–15. Task 16 visuals and task 23 final
+   editorial review remain open.
 4. Demo UI text review (labels, error wording, settings hints in
    `demo/index.html`) per task 17's Codex ownership.
 
@@ -201,7 +202,7 @@ squash approval for both repositories.
 - [x] If that artifact cannot be recovered, decide whether the paper and repository should use the reproducible result of approximately `0.800`. *(Decision: docs cite the paper's Table 4 values; the shipped artifacts/scripts compute ≈0.800/0.824 from the raw labels.)*
 - [x] Select one canonical calibration artifact for the scoring judge.
 - [ ] Select one canonical calibration artifact for the adversarial-instruction identifier.
-- [ ] Select one canonical calibration artifact for the optional FOLLOWED/behavior judge, if that analysis remains public.
+- [x] Select one canonical calibration artifact for the optional post-paper behavior judge. *(`follow_snapshot.jsonl` and `follow_calibration.json`; the data card and behavior-analysis guide document the sample and metrics.)*
 - [~] Ensure every published calibration number can be reproduced from a shipped artifact. *(Docs cite the paper's 0.817/0.823 per Rahul; the shipped labels + calibrate_judge.py compute ≈0.800/0.824.)*
 - [x] Remove prose that narrates several unsuccessful attempts to reconstruct the paper number.
 - [ ] Keep the checkpoint-results issue separate from the calibration-table issue: the final released checkpoint and main paper result already match.
@@ -344,11 +345,11 @@ squash approval for both repositories.
 **Owners: Claude Code for dependency analysis; Codex for any retained annotation guide**
 
 - [x] Determine whether `configs/advdet_queue_spec_v1.json` is needed to reproduce a reported calibration artifact. *(Retained: documents the shipped advdet gold set's sampling; linked from DATA_CARD.)*
-- [x] Determine whether `configs/follow_queue_spec_v1.json` is needed to reproduce a reported calibration artifact. *(Retained under its current unversioned name; linked from DATA_CARD.md for sampling provenance. Snapshot and report remain unchanged.)*
+- [x] Determine whether `configs/follow_queue_spec_v1.json` is needed to reproduce the post-paper behavior calibration. *(Retained under its current unversioned name; linked from DATA_CARD.md and the behavior-analysis guide for sampling provenance.)*
 - [x] Determine whether `configs/recall_calib_spec_v1.json` is needed to reproduce a reported calibration artifact. *(Deleted: internal Weave-trace experiment, unreferenced.)*
 - [x] Retain queue specifications only if their inputs, sampling method, labels, and outputs are sufficiently public to reproduce the process.
-- [x] Audit `docs/ANNOTATION_FOLLOW.md` using the same criterion. *(Removed at Rahul's request; useful annotation rules and the recomputation command consolidated in DATA_CARD.md.)*
-- [x] If retained, consolidate annotation instructions and queue provenance into one concise calibration document. *(DATA_CARD.md contains the retained instructions and links to sampling specifications.)*
+- [x] Audit `docs/ANNOTATION_FOLLOW.md` using the same criterion. *(Removed at Rahul's request; the retained method is documented as a post-paper analysis.)*
+- [x] If retained, consolidate annotation instructions and queue provenance into one concise calibration document. *(`docs/BEHAVIOR_ANALYSIS.md` defines the labels, outputs, command, calibration, and limitations; DATA_CARD.md records the artifacts.)*
 - [x] If not retained, remove the specs, document, and dangling references. *(Removed the standalone runbook and its public references; the sampling specs remain useful provenance and were retained.)*
 
 ---
@@ -485,7 +486,7 @@ Tasks:
 
 ### 15. Rewrite remaining `prism-eval` documentation
 
-- [~] Rewrite `docs/RESULTS.md` so it reports the final paper results and directly reproducible supplemental results only. Main-result prose is tightened and calibration now links to DATA_CARD.md; XPIA and calibration evidence await tasks 4–5.
+- [~] Rewrite `docs/RESULTS.md` so it reports the final paper results and clearly labeled additional analyses. Main and indirect prompt injection paper results are separated from the reproducible post-paper behavior analysis; provenance and paper-calibration evidence still await tasks 4–5.
 - [x] Remove old checkpoint comparisons and step histories.
 - [x] Remove the calibration discrepancy narrative once a canonical decision is made.
 - [x] Retain upstream baseline revisions and checkpoint links because they are useful for provenance.
@@ -494,7 +495,8 @@ Tasks:
 - [x] Keep realistic sources of run-to-run variation without overexplaining.
 - [x] Review `docs/ABLATION_REPORT.md` for internal narration, stale checkpoint names, and consistency with final results. Preserved every numeric table row; removed contradictory summary prose and clarified the extraction-context conditions.
 - [x] Review `RUBRIC.md` and `RUBRIC_ADVDET.md` for concise public-facing terminology and canonical prompt links. *(PRISM terminology; rules checked against both unchanged judge prompts, with per-bullet hallucination and thresholded detection definitions corrected.)*
-- [x] Rewrite or remove `docs/ANNOTATION_FOLLOW.md` according to the annotation-artifact decision. *(Deleted at Rahul's request; annotation rule and recomputation command retained in DATA_CARD.md. XPIA publication decisions remain open.)*
+- [x] Rewrite or remove `docs/ANNOTATION_FOLLOW.md` according to the annotation-artifact decision. *(Deleted at Rahul's request; the retained behavior method and recomputation command now live in `docs/BEHAVIOR_ANALYSIS.md`.)*
+- [x] State that BIPIA, LLMail-Inject, and InjecAgent results are part of the paper, while behavior-conditioned analysis using the optional behavior judge was added after the paper.
 - [x] Review `CONTRIBUTING.md` for the same direct, human-authored style.
 
 ### 16. Add two useful visuals
