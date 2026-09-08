@@ -1,6 +1,6 @@
 ---
 license: other
-license_name: Multiple source licenses
+license_name: multiple-source-licenses
 license_link: https://huggingface.co/datasets/Offensive-AI-Lab/prism-training-dataset#license
 language:
 - en

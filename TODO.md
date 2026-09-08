@@ -66,10 +66,9 @@ Pending writing (Codex), in suggested order:
 
 1. Both README prose rewrites and the demo screenshot are complete. The two
    task-16 visuals still need to be added.
-2. **Publish the reviewed Hugging Face cards.** Source cards for the training
-   dataset, four PRISM checkpoints, and two baseline adapters are complete under
-   `huggingface/`. The six public model repositories still need the new cards
-   uploaded; the dataset remains private pending approval.
+2. **Completed: publish the reviewed Hugging Face cards.** The cards for the
+   training dataset, four PRISM checkpoints, and two baseline adapters are live.
+   The dataset repository remains private pending approval to make it public.
 3. Finish task 8 CLI terminology. Both repos' supporting docs have been tightened;
    the eval rubrics now follow the canonical judge prompts, and the FOLLOWED
    runbook has been removed. XPIA and calibration evidence decisions still block
@@ -136,7 +135,7 @@ squash approval for both repositories.
 - [x] Record exact counts by source and split. *(277,496 total; masked 203,589; train 162,821 / val 20,410 / test 20,358; per-source table in check_dataset.py.)*
 - [x] Add a deterministic validation command that checks required fields, duplicate IDs, split integrity, and record counts before upload. *(scripts/check_dataset.py, pinned val-membership checksum.)*
 - [x] Decide the Hugging Face organization and dataset repository name. *(Offensive-AI-Lab/prism-training-dataset.)*
-- [~] Publish the approved dataset to Hugging Face. *(Uploaded PRIVATE per Rahul; flip public after review + Codex dataset card.)*
+- [~] Publish the approved dataset to Hugging Face. *(The data and dataset card are uploaded; the repository remains private pending approval to make it public.)*
 - [x] Make the released dataset the primary/default path in reproduction documentation. *(PIPELINE §1, RECIPES, README sentence, recipe error message; Codex polish pending.)*
 - [x] Retain the generation scripts as an optional way to create a new dataset, not as the only way to train PRISM.
 - [x] Add direct dataset links where relevant. *(The prism README and data card link the training dataset. The eval README does not need it for evaluation reproduction.)*
@@ -155,9 +154,9 @@ squash approval for both repositories.
 - [~] Exclude any source or field that cannot legally be redistributed. *(No exclusion is proposed by the current audit; revisit if legal review rejects a source or field.)*
 - [ ] If a source must be excluded, document which source is absent and provide a regeneration path for users with lawful access.
 - [x] Produce a machine-readable source inventory with source name, upstream URL, revision, license, included fields, transformations, and redistribution decision. *(source_inventory.json.)*
-- [x] Create a clear Hugging Face dataset card covering sources, licenses, transformations, filtering, splits, intended use, and limitations. *(`huggingface/prism-training-dataset/README.md`; upload pending.)*
+- [x] Create a clear Hugging Face dataset card covering sources, licenses, transformations, filtering, splits, intended use, and limitations. *(`huggingface/prism-training-dataset/README.md`; published on Hugging Face.)*
 - [x] Do not imply that being hosted on Hugging Face automatically grants redistribution rights.
-- [x] Ensure `LICENSE`, `NOTICE`, repository data cards, and the Hugging Face dataset card agree. *(Added the repository NOTICE and field-level multi-license wording; final legal approval and Hub publication remain pending.)*
+- [x] Ensure `LICENSE`, `NOTICE`, repository data cards, and the Hugging Face dataset card agree. *(Added the repository NOTICE and field-level multi-license wording; the Hub card is published, while final legal approval remains pending.)*
 
 ### 4. Resolve the provenance of `prism-eval/data/xpia_corpus.parquet`
 
@@ -680,7 +679,7 @@ Validation was run from clean environments on 2026-09-07.
 - [ ] Make the prism repository and training dataset public, then repeat anonymous artifact downloads.
 - [ ] Confirm the dataset, four checkpoint repositories, and two baseline-adapter repositories are public with matching digests.
 - [ ] Remove this internal TODO and perform the approved history cleanup before publication.
-- [~] Publish the reviewed model and dataset cards. *(Seven source cards are ready under `huggingface/`; live Hub updates require a signed-in Hugging Face session and publication confirmation.)*
+- [x] Publish the reviewed model and dataset cards. *(All seven cards are live on Hugging Face; the dataset repository remains private pending separate release approval.)*
 
 ---
 
@@ -700,7 +699,7 @@ These items were discussed in the transcript but are not automatically part of t
 
 - [x] Where is the Modal/UI code discussed in the transcript? *(Packaged in `prism/demo/`.)*
 - [x] Where are the exact filtered training JSONLs and validity mask used for the released checkpoints? *(NFS: precomputed_data/qwen3.5-9b-last128-v5-prompt-only/relabeled_jsonl/ + valid_record_ids.json; 203,589 of 277,496 records pass the mask; same record set for all three target models.)*
-- [x] Which Hugging Face organization and repository should host the training dataset? *(Offensive-AI-Lab/prism-training-dataset; private pending publication approval.)*
+- [x] Which Hugging Face organization and repository should host the training dataset? *(Offensive-AI-Lab/prism-training-dataset; private pending approval to make it public.)*
 - [?] Who has the original Zenity/Microsoft XPIA artifact?
 - [?] Who will request or approve XPIA redistribution permission?
 - [x] Does the current paper still report calibration kappa `0.817`, or has Table 4 been updated? *(Confirmed in task 5. The evidence needed to reproduce that value remains unresolved.)*
