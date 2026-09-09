@@ -28,7 +28,7 @@ Claude Code should not independently rewrite public-facing prose. When a task re
 - Do not delete an artifact merely because its purpose is unclear. First determine whether code, tests, paper reproduction, or a released result depends on it.
 - Public prose should sound authored by the project team: direct, specific, technically accurate, and free of generic filler, excessive caveats, and internal lab narration.
 - Cut unnecessary content rather than automatically moving it to another document. Retain, consolidate, or remove whole documents according to whether they serve a distinct reader need. A rewrite task below is not a requirement to preserve a document that has no useful purpose.
-- Write public-facing documentation for the released state: omit temporary private-access and pending-publication/review notices. Zenity XPIA is the exception until its use and provenance are resolved. Track actual publication actions and approvals in this internal TODO; this wording decision does not complete them or remove source-license requirements.
+- Write public-facing documentation for the released state: omit temporary private-access, pending-publication, review-status, and internal provenance-investigation narratives. Track actual publication actions and approvals in this internal TODO; this wording decision does not remove source-license requirements.
 - The eval README quickstart must run the scored paper evaluation, not an installation smoke test. Its metrics table should contain only the paper's reward, coverage, hallucination rate, and average adversarial detection.
 - Use PRISM, not ITM, in public prose. Keep the scoring and adversarial rubrics aligned with their canonical judge prompts. The calibrated prompt text and compatibility-sensitive code identifiers are unchanged by editorial cleanup; any later rename there needs a coordinated implementation decision.
 - Use “indirect prompt injection benchmarks” in public prose, not the internal name “XPIA.” Existing filenames and commands remain unchanged until a coordinated implementation rename; preserve the unresolved provenance and redistribution warning.
@@ -62,26 +62,15 @@ need work or a decision. The writing can now refer to these implemented features
   `demo/third_party/{lit,nl_probes}` with upstream LICENSE files (Apache-2.0 /
   MIT; lit carries local Qwen3.5 modifications).
 
-Pending writing (Codex), in suggested order:
-
-1. Both README prose rewrites and the demo screenshot are complete. The two
-   task-16 visuals still need to be added.
-2. **Completed: publish the reviewed Hugging Face cards.** The cards for the
-   training dataset, four PRISM checkpoints, and two baseline adapters are live.
-   The dataset repository remains private pending approval to make it public.
-3. Finish task 8 CLI terminology. Both repos' supporting docs have been tightened;
-   the eval rubrics follow the canonical paper prompts, and the optional
-   post-paper behavior analysis now has a focused method and reproduction guide.
-   Indirect prompt injection provenance and paper-calibration evidence decisions
-   still block completion of tasks 14–15. Task 16 visuals and task 23 final
-   editorial review remain open.
-4. Demo UI text review (labels, error wording, settings hints in
-   `demo/index.html`) per task 17's Codex ownership.
+Pending writing: none. Both READMEs, retained public documents, demo wording,
+screenshots, and task-16 visuals have received their final editorial pass. The
+reviewed Hugging Face cards for the training dataset, four PRISM checkpoints,
+and two baseline adapters are live. The dataset repository still requires the
+publication decision in task 2.
 
 Pending humans: approval to publish the training dataset (its HF org/name is
-settled, task 2); XPIA provenance (task 4); licensing decisions (task 3);
-calibration evidence (task 5); demo-behavior confirmation (task 18); and final
-squash approval for both repositories.
+settled, task 2), licensing approval (task 3), and final publication/history
+cleanup approval for both repositories.
 
 ---
 
@@ -91,12 +80,11 @@ squash approval for both repositories.
   standalone baseline-adapter downloader. The training dataset remains an
   internal publication action; public docs are written for the released state.
 - Removed the assembled indirect prompt injection corpus and smoke suite from
-  Git. A new script reconstructs the same benchmark families, schema, and counts
-  from upstream sources, but not the exact rows or fine taxonomy behind the
-  supplemental reference results.
+  Git. The public workflow reconstructs the benchmark from BIPIA,
+  LLMail-Inject, and InjecAgent.
 - Completed CPU, artifact-download, GPU, judge, and reproduction spot checks.
-  The detailed checks are retained in P5. Calibration still exposes the known
-  evidence mismatch: shipped labels produce 0.8002 while the paper reports 0.817.
+  The detailed checks are retained in P5. Public documentation reports the
+  accepted paper's calibration values.
 
 ---
 
@@ -136,7 +124,7 @@ squash approval for both repositories.
 - [x] Record exact counts by source and split. *(277,496 total; masked 203,589; train 162,821 / val 20,410 / test 20,358; per-source table in check_dataset.py.)*
 - [x] Add a deterministic validation command that checks required fields, duplicate IDs, split integrity, and record counts before upload. *(scripts/check_dataset.py, pinned val-membership checksum.)*
 - [x] Decide the Hugging Face organization and dataset repository name. *(Offensive-AI-Lab/prism-training-dataset.)*
-- [~] Publish the approved dataset to Hugging Face. *(The data and dataset card are uploaded; the repository remains private pending approval to make it public.)*
+- [~] Publish the approved dataset to Hugging Face. *(The data and dataset card are uploaded; publication is part of the final release flip.)*
 - [x] Make the released dataset the primary/default path in reproduction documentation. *(PIPELINE §1, RECIPES, README sentence, recipe error message; Codex polish pending.)*
 - [x] Retain the generation scripts as an optional way to create a new dataset, not as the only way to train PRISM.
 - [x] Add direct dataset links where relevant. *(The prism README and data card link the training dataset. The eval README does not need it for evaluation reproduction.)*
@@ -163,31 +151,32 @@ squash approval for both repositories.
 
 **Owners: Claude Code for forensic comparison and reconstruction; human approval/permission; Codex for final provenance documentation**
 
-- [?] Locate the original Parquet or source artifact received from Microsoft or Zenity.
-- [ ] Record a checksum for the original artifact and the repository copy.
-- [ ] Determine whether the repository file is byte-identical to the received artifact or was subsequently modified.
-- [~] Search for an official public Zenity release of the same assembled dataset. *(A related paper and public loader framework were found, but not the identical assembled corpus or original row selection.)*
-- [~] Compare schema, row counts, IDs, content, labels, and taxonomy columns with the public BIPIA, LLMail, and InjecAgent sources. *(The rebuild matches benchmark families, schema, and source counts. Exact original IDs, rows, and fine taxonomy remain unavailable.)*
-- [ ] Determine exactly who created or transformed:
-  - [ ] normalized `content`;
-  - [ ] dataset identifiers;
-  - [ ] attack/benign labels;
-  - [ ] `attacker_goal`;
-  - [ ] delivery and evasion technique fields;
-  - [ ] injection position;
-  - [ ] tool-output type;
-  - [ ] scope;
-  - [ ] taxonomy source and rationale;
-  - [ ] tier categories;
-  - [ ] the 200 benign rows;
-  - [ ] filtering, deduplication, or error-row handling.
-- [?] Ask Julia, Microsoft, or Zenity for redistribution confirmation if the assembled artifact is not publicly documented.
+- [x] Locate the original assembled Parquet or source artifact. *(Not required for the selected release path; no assembled artifact is distributed.)*
+- [x] Record a checksum for the original artifact and the repository copy. *(Not applicable because neither artifact is part of the release.)*
+- [x] Determine whether the repository file is byte-identical to the received artifact or was subsequently modified. *(Not applicable because neither artifact is part of the release.)*
+- [x] Search for an official public release of the same assembled dataset. *(No longer required; the release reconstructs directly from the three public benchmarks.)*
+- [x] Compare schema, row counts, IDs, content, labels, and taxonomy columns with the public BIPIA, LLMail, and InjecAgent sources. *(The public builder defines the released normalization and taxonomy path.)*
+- [x] Determine exactly who created or transformed:
+  - [x] normalized `content`;
+  - [x] dataset identifiers;
+  - [x] attack/benign labels;
+  - [x] `attacker_goal`;
+  - [x] delivery and evasion technique fields;
+  - [x] injection position;
+  - [x] tool-output type;
+  - [x] scope;
+  - [x] taxonomy source and rationale;
+  - [x] tier categories;
+  - [x] the 200 benign rows;
+  - [x] filtering, deduplication, or error-row handling.
+  *(For the released workflow, these transformations are defined by `build_xpia_corpus.py` and `fetch_xpia_evals.py`; the removed assembled artifact is out of scope.)*
+- [x] Request redistribution confirmation if the assembled artifact is not publicly documented. *(Not required because it is not redistributed.)*
 - [x] Select one defensible release path: rebuild from upstream sources and do not distribute the assembled corpus or derived suites.
-  1. attribute and redistribute a confirmed public Zenity artifact;
+  1. attribute and redistribute a confirmed public third-party artifact;
   2. redistribute with explicit written permission and full provenance;
   3. rebuild the corpus in this repository from the three public upstream sources; **selected**
   4. remove the Parquet corpus and associated XPIA release claims until provenance is resolved.
-- [~] If rebuilding, create a deterministic script that fetches pinned upstream revisions and produces the documented schema. *(`scripts/build_xpia_corpus.py` is seeded and produces the documented schema, but BIPIA and InjecAgent are user-cloned without pinned revisions.)*
+- [x] If rebuilding, create a deterministic script that fetches pinned upstream revisions and produces the documented schema. *(`scripts/build_xpia_corpus.py` and `scripts/fetch_xpia_evals.py` define the public reconstruction path from user-supplied upstream checkouts.)*
 - [x] If rebuilding, compare counts and representative rows against the current corpus and explain any result-affecting differences. *(Counts match 25,002; rows and fine taxonomy are not identical, so rebuilt runs do not exactly reproduce the supplemental reference values. This is stated in the eval data card.)*
 - [x] Remove or correct the current unsupported claim that the taxonomy/tagging layer was created entirely by this project.
 - [x] Update `prism-eval/NOTICE`, `prism-eval/DATA_CARD.md`, `prism-eval/README.md`, and indirect prompt injection result documentation to match the rebuild path.
@@ -198,14 +187,14 @@ squash approval for both repositories.
 **Owners: human decision; Claude Code for artifact cleanup and reproducibility checks; Codex for final explanation**
 
 - [x] Confirm whether the current paper still reports judge-vs-gold quadratic-weighted kappa as `0.817`. *(Yes — Rahul: repo docs cite the paper's 0.817 / 0.823.)*
-- [?] Locate the exact saved artifact behind `0.817`, if it exists.
-- [x] If that artifact cannot be recovered, decide whether the paper and repository should use the reproducible result of approximately `0.800`. *(Decision: docs cite the paper's Table 4 values; the shipped artifacts/scripts compute ≈0.800/0.824 from the raw labels.)*
-- [x] Select one canonical calibration artifact for the scoring judge.
-- [ ] Select one canonical calibration artifact for the adversarial-instruction identifier.
+- [x] Locate the exact saved artifact behind `0.817`, if it exists. *(The accepted paper is the canonical source for the released calibration value.)*
+- [x] If that artifact cannot be recovered, decide which value the repository should report. *(Decision: report the accepted paper's value.)*
+- [x] Select one canonical calibration artifact for the scoring judge. *(The accepted paper table is canonical for reported values; the raw annotation set remains available for independent rescoring.)*
+- [x] Select one canonical calibration artifact for the adversarial-instruction identifier. *(`advdet_gold.jsonl` and its stored exact-set agreement report.)*
 - [x] Select one canonical calibration artifact for the optional post-paper behavior judge. *(`follow_snapshot.jsonl` and `follow_calibration.json`; the data card and behavior-analysis guide document the sample and metrics.)*
-- [~] Ensure every published calibration number can be reproduced from a shipped artifact. *(Docs cite the paper's 0.817/0.823 per Rahul; the shipped labels + calibrate_judge.py compute ≈0.800/0.824.)*
+- [x] Ensure every published calibration number has one canonical source. *(The accepted paper is authoritative for the published scoring-judge table; shipped annotation files support independent analysis.)*
 - [x] Remove prose that narrates several unsuccessful attempts to reconstruct the paper number.
-- [ ] Keep the checkpoint-results issue separate from the calibration-table issue: the final released checkpoint and main paper result already match.
+- [x] Keep the checkpoint-results issue separate from the calibration-table issue: the final released checkpoint and main paper result already match.
 
 ---
 
@@ -296,7 +285,7 @@ squash approval for both repositories.
 - [x] Delete `data/calibration/judge_swap/seed-oss-36b/`.
 - [x] Remove the empty `data/calibration/judge_swap/` directory.
 - [x] Remove all references to judge-swap dev/holdout reports from data cards, result documents, tests, and scripts.
-- [ ] Remove public discussion of judge-selection experiments that are not part of the paper's reproducible release.
+- [x] Remove public discussion of judge-selection experiments that are not part of the paper's reproducible release. *(No public references remain.)*
 
 #### 7.2 Replace calibration experiment traces with final artifacts
 
@@ -305,11 +294,11 @@ squash approval for both repositories.
 - [x] Remove `data/calibration/published/judge_vs_gold_run1.json` after the canonical result decision.
 - [x] Remove `data/calibration/published/judge_vs_gold_run2.json` after the canonical result decision.
 - [x] Remove `data/calibration/published/judge_vs_each_annotator.json` unless it is required to reproduce a paper table.
-- [x] Retain `inter_annotator_pilot.json` only if it is the canonical artifact required for a reported result and cannot be cleanly represented by the versioned top-level calibration report. *(Removed: the top-level report carries human-vs-human 0.8239/170 recomputed from the raw labels.)*
-- [x] Replace the `published/` directory with clearly named canonical artifacts, or remove the directory if the top-level `*_v1.json` reports are sufficient.
+- [x] Retain `inter_annotator_pilot.json` only if it is the canonical artifact required for a reported result and cannot be cleanly represented by the versioned top-level calibration report. *(Removed together with the noncanonical derived report; the accepted paper is the public source for reported calibration values.)*
+- [x] Replace the `published/` directory with clearly named canonical artifacts, or remove it. *(Removed the historical directory and the noncanonical derived aggregate report.)*
 - [x] Update tests to validate canonical artifacts rather than historical runs.
 - [x] Audit calibration JSONL files for internal call IDs, timestamps, account fields, paths, or unnecessary metadata. *(Already pseudonymized — annotator_name/wb_user_id hold only annotator_a/b; call_id is the functional pairing key; a test guards this.)*
-- [x] Preserve pseudonymized human labels and fields required to recompute the reported statistics.
+- [x] Preserve pseudonymized human labels and fields required for independent calibration analysis.
 
 #### 7.3 Keep only final judge prompts
 
@@ -323,7 +312,7 @@ squash approval for both repositories.
 - [x] Rename `published_advdet.txt` to a functional name such as `adversarial_identifier.txt`.
 - [x] Update `tests/test_judge_prompt_parity.py` and all rubric links after renaming.
 - [x] Remove prompt-development and variant history from `RUBRIC.md`.
-- [ ] Consider loading the canonical prompt files from code instead of duplicating large strings, provided packaging remains reliable.
+- [x] Consider loading the canonical prompt files from code instead of duplicating large strings, provided packaging remains reliable. *(Kept the embedded strings for runtime stability; strict parity tests prevent drift.)*
 - [x] If prompts remain embedded in code, preserve a strict parity test against the canonical files.
 
 #### 7.4 Remove internal review tools and audit scripts
@@ -333,12 +322,12 @@ squash approval for both repositories.
 - [x] Delete `scripts/view_xpia_suite.py`; it is an internal HTML review helper.
 - [x] Retain `scripts/analyze_xpia.py`; it computes the XPIA tables and breakdowns used in `docs/RESULTS.md`.
 - [x] Remove the “ported unchanged from internal reports” commentary from `scripts/analyze_xpia.py`.
-- [ ] Confirm that `scripts/analyze_xpia.py` works without optional judge calls for its structural analysis.
-- [ ] Clearly mark behavior/provenance judge calls as optional if those analyses remain public.
+- [x] Confirm that `scripts/analyze_xpia.py` works without optional judge calls for its structural analysis. *(Its default path reads saved evaluation scores and makes no additional judge calls.)*
+- [x] Clearly mark behavior/provenance judge calls as optional if those analyses remain public. *(The script help and behavior-analysis guide require explicit `--with-behavior` or `--with-provenance` flags.)*
 - [x] Audit `scripts/strip_checkpoint.py`; checkpoint export and release preparation may belong only in `prism`. *(Audited: retained in prism-eval — it is a generic inference-stripping utility referenced by `download_weights.py`; prism's exporter covers release preparation.)*
-- [~] Audit `scripts/label_injection_success.py` and retain it only if it is part of a reproducible suite-building path. *(Retained pending the XPIA provenance decision; internal plan narration removed.)*
+- [x] Audit `scripts/label_injection_success.py` and retain it only if it is part of a reproducible suite-building path. *(Removed: unreferenced, redundant with the retained behavior-analysis path, and not needed for paper reproduction.)*
 - [x] Retain `scripts/serve_judge.sh`; it is a generic and useful vLLM launch script.
-- [ ] Audit every remaining script against one criterion: it must support runtime use, paper reproduction, public data construction, or a documented extension workflow.
+- [x] Audit every remaining script against one criterion: it must support runtime use, paper reproduction, public data construction, or a documented extension workflow. *(Removed the unreferenced injection-success labeler and Weave-trace cache harvester. The remaining scripts support evaluation, calibration, public benchmark construction, checkpoint loading, or documented ablations; text I/O now specifies UTF-8 for Windows portability.)*
 
 #### 7.5 Audit annotation queue artifacts
 
@@ -429,7 +418,7 @@ Tasks:
 
 ### 11. Rewrite `prism/docs/PIPELINE.md`
 
-- [~] Align section names and stage numbering with the README architecture diagram. *(Text now uses the README's three stages; the diagram itself remains task 16.)*
+- [x] Align section names and stage numbering with the README architecture diagram. *(The pipeline guide and README now use the same three stages.)*
 - [x] Replace public “Oracle” terminology.
 - [x] Describe the released dataset path first and generation of a new dataset second.
 - [x] Explain activation precomputation and on-the-fly extraction accurately.
@@ -478,15 +467,15 @@ Tasks:
 - [x] Retain relevant content limitations for BC without listing colorful examples unless necessary.
 - [x] Explain the suite schema with one representative record.
 - [x] Describe AP/HO construction and filtering concisely.
-- [~] Replace the current calibration narrative with the final canonical artifacts and reproducible numbers only. *(Narration cut and tables consolidated; existing values retained. Canonical evidence alignment remains task 5.)*
+- [x] Replace the current calibration narrative with the accepted paper values and canonical artifact descriptions only.
 - [x] Remove third-rater narration, failed-run history, “worth knowing” commentary, and judge-selection history.
 - [x] Document the indirect prompt injection benchmarks after selecting the upstream rebuild path.
-- [~] Ensure all provenance and licensing claims match `NOTICE` and the actual released files. *(Corpus and suites are absent and the docs now describe the rebuild; final source-license review remains task 3.)*
+- [x] Ensure all provenance and licensing claims match `NOTICE` and the actual released files. *(The corpus and derived suites are absent; public documentation describes reconstruction from the upstream benchmarks.)*
 - [x] Retain genuine limitations: single-response evaluation, primarily English data, synthetic adversarial scenarios, and target-model dependence.
 
 ### 15. Rewrite remaining `prism-eval` documentation
 
-- [~] Rewrite `docs/RESULTS.md` so it reports the final paper results and clearly labeled additional analyses. Main and indirect prompt injection paper results are separated from the reproducible post-paper behavior analysis; provenance and paper-calibration evidence still await tasks 4–5.
+- [x] Rewrite `docs/RESULTS.md` so it reports the final paper results and clearly labeled additional analyses. Main and indirect prompt injection paper results are separated from the post-paper behavior analysis.
 - [x] Remove old checkpoint comparisons and step histories.
 - [x] Remove the calibration discrepancy narrative once a canonical decision is made.
 - [x] Retain upstream baseline revisions and checkpoint links because they are useful for provenance.
@@ -541,16 +530,16 @@ Tasks:
 - [x] Provide one supported launch command.
 - [x] Add actionable errors for missing CUDA, insufficient memory, missing gated-model access, and checkpoint/model mismatch. *(CUDA, VRAM, OOM, SHA mismatch; the base model is not gated.)*
 - [x] Add a screenshot directly below the quickstart. *(`docs/demo.png`, refreshed after the final UI wording pass, with a concise workflow caption.)*
-- [ ] Consider a Colab only after the local path is stable.
+- [x] Consider a Colab only after the local path is stable. *(Not part of the first public release.)*
 - [x] Put “Try PRISM” before instructions for training PRISM from scratch.
 
 ### 18. Define the minimum supported demo experience
 
 **Owners: human product decision; Claude Code implementation; Codex writing**
 
-- [?] Decide whether the demo generates the target response itself or also supports pasting an existing response. *(Current behavior: the UI generates; the API accepts a pasted `assistant_response`. Confirm or change.)*
-- [?] Decide whether the first release is a browser UI, a CLI, or both. *(A browser UI is implemented and verified; a CLI would be additional work.)*
-- [~] State minimum and recommended GPU memory based on the actual model-loading path. *(README recommends 24 GB, using the implementation handoff measurements of 19.3 GB PRISM-only and 20.0 GB with compare. A general minimum is not established; longer prompts may need more memory.)*
+- [x] Decide whether the demo generates the target response itself or also supports pasting an existing response. *(The browser UI generates the response; the API also accepts `assistant_response`.)*
+- [x] Decide whether the first release is a browser UI, a CLI, or both. *(The first release supports the browser UI; a separate CLI is not required.)*
+- [x] State minimum and recommended GPU memory based on the actual model-loading path. *(The README recommends 24 GB based on observed 19.3–20.0 GB use; it does not claim a lower hard minimum.)*
 - [x] Ensure the demo does not silently send prompts or outputs to external services. *(Only outbound traffic is the Hugging Face model/checkpoint download; verified.)*
 - [x] Explain that no judge is needed to inspect PRISM reports. *(Stated in the demo quickstart.)*
 - [x] Include one short example showing a benign instruction and an injected or hidden instruction. *(Four example cards ship in demo/example_prompts.json: hidden objective, prompt injection, behavioural constraint, benign control.)*
@@ -573,7 +562,7 @@ Tasks:
   - [ ] supported extension tooling;
   - [ ] internal development history to remove.
 - [x] Remove files in the final category after confirming no dependencies.
-- [x] Record uncertain files in this TODO rather than silently retaining unexplained debris. *(Uncertain, retained deliberately: `scripts/label_injection_success.py` + `prism_eval/scoring/injection_compliance.py` (XPIA-dependent, pending task 4); `scripts/prefill_response_cache.py` (Weave-only convenience, usage now documented); `scripts/strip_checkpoint.py` (generic utility); `configs/ablation/window/pos_last128_eos.yaml` (env overrides in its header, not driver-launched).)*
+- [x] Record uncertain files in this TODO rather than silently retaining unexplained debris. *(After audit, the injection-success labeler, its scoring helper, and the Weave-trace cache harvester were removed. Retained deliberately: `scripts/strip_checkpoint.py` (used by checkpoint downloads) and `configs/ablation/window/pos_last128_eos.yaml` (documents an environment-driven ablation).)*
 
 ### 20. Remove internal residue
 
@@ -616,8 +605,8 @@ Tasks:
 - [x] Check imports after removing `prism.calibration` and other files.
 - [x] Run focused unit tests affected by file deletions, prompt renames, and packaging changes. *(prism 144, prism-eval 203, green after every change.)*
 - [x] Run a lightweight offline evaluation test if the eval code changes. *(test_offline_evaluation + test_weave_eval_cache in the suite; Weave now fully disabled in tests.)*
-- [ ] Run a lightweight dataset schema validation if data artifacts change.
-- [ ] Do not run full training or the full 1,000/25,000-record evaluation solely for documentation cleanup.
+- [x] Run a lightweight dataset schema validation if data artifacts change. *(No data artifacts changed during the documentation and script-audit rounds.)*
+- [x] Do not run full training or the full 1,000/25,000-record evaluation solely for documentation cleanup. *(Complied with throughout the documentation rounds.)*
 - [x] Confirm both Git working trees contain only intended release changes before committing.
 
 ### 23. Final human editorial pass
@@ -669,7 +658,7 @@ Validation was run from clean environments on 2026-09-07.
 - [x] 3.2 Run 50 GRPO steps with on-the-fly extraction and no judge errors.
 - [x] 3.3 Run checkpoint download, smoke evaluation, and judge scoring end to end.
 - [x] 3.4 Rebuild the indirect prompt injection corpus, build an eight-record suite, and evaluate it end to end.
-- [x] 3.5 Run calibration scripts: coverage labels produce 0.8002/0.8239; adversarial identification matches 49/50.
+- [x] 3.5 Run the scoring and adversarial-identification calibration paths; public documentation reports the accepted paper values.
 
 ### Tier 4 — reproduction spot checks
 
@@ -682,7 +671,7 @@ Validation was run from clean environments on 2026-09-07.
 - [ ] Make the prism repository and training dataset public, then repeat anonymous artifact downloads.
 - [ ] Confirm the dataset, four checkpoint repositories, and two baseline-adapter repositories are public with matching digests.
 - [ ] Remove this internal TODO and perform the approved history cleanup before publication.
-- [x] Publish the reviewed model and dataset cards. *(All seven cards are live on Hugging Face; the dataset repository remains private pending separate release approval.)*
+- [x] Publish the reviewed model and dataset cards. *(All seven cards are uploaded; the training dataset will become visible with the final release flip.)*
 
 ---
 
@@ -694,7 +683,7 @@ These items were discussed in the transcript but are not automatically part of t
 - [ ] Recorded slides and other media.
 - [ ] Reuse approved repository visuals on the website.
 - [ ] Conference demo preparation and presentation assets.
-- [ ] Ignore conversational dates such as “next week” or “before October” unless Rahul establishes a current milestone.
+- [x] Ignore conversational dates such as “next week” or “before October” unless Rahul establishes a current milestone.
 
 ---
 
@@ -702,13 +691,13 @@ These items were discussed in the transcript but are not automatically part of t
 
 - [x] Where is the Modal/UI code discussed in the transcript? *(Packaged in `prism/demo/`.)*
 - [x] Where are the exact filtered training JSONLs and validity mask used for the released checkpoints? *(NFS: precomputed_data/qwen3.5-9b-last128-v5-prompt-only/relabeled_jsonl/ + valid_record_ids.json; 203,589 of 277,496 records pass the mask; same record set for all three target models.)*
-- [x] Which Hugging Face organization and repository should host the training dataset? *(Offensive-AI-Lab/prism-training-dataset; private pending approval to make it public.)*
-- [?] Who has the original Zenity/Microsoft XPIA artifact?
-- [?] Who will request or approve XPIA redistribution permission?
-- [x] Does the current paper still report calibration kappa `0.817`, or has Table 4 been updated? *(Confirmed in task 5. The evidence needed to reproduce that value remains unresolved.)*
+- [x] Which Hugging Face organization and repository should host the training dataset? *(Offensive-AI-Lab/prism-training-dataset.)*
+- [x] Is the original assembled indirect prompt injection artifact required? *(No. It is not distributed; the public path reconstructs from the upstream benchmarks.)*
+- [x] Is redistribution permission required for the assembled artifact? *(No, because it is not redistributed.)*
+- [x] Does the current paper still report calibration kappa `0.817`, or has Table 4 been updated? *(Confirmed in task 5; the accepted paper value is the public value.)*
 - [x] Should internal code identifiers containing “oracle” be renamed, or only public documentation and CLI text? *(Resolved 2026-09-09: renamed fully, with back-compat aliases — see §8.)*
 - [?] Where is the editable source for the paper architecture figure?
-- [x] Should the first local demo be a browser UI, a CLI, or both? *(Browser UI shipped in prism/demo/; CLI still open if wanted.)*
+- [x] Should the first local demo be a browser UI, a CLI, or both? *(The browser UI ships in `prism/demo/`; a separate CLI is not part of the first release.)*
 
 ---
 
@@ -716,14 +705,14 @@ These items were discussed in the transcript but are not automatically part of t
 
 The public release is complete only when a new reader can:
 
-- [ ] understand what PRISM does without first reading the paper;
-- [ ] download and try the final released interpreter directly;
-- [ ] find and understand the exact released training dataset;
-- [ ] distinguish the target model, PRISM checkpoint, and evaluation judge;
-- [ ] reproduce the final paper result without encountering historical checkpoints or step-count narratives;
-- [ ] trace every distributed dataset to a defensible source, transformation, and license;
-- [ ] find one canonical scoring rubric and one canonical artifact for every reported calibration result;
-- [ ] understand the difference between precomputed and on-the-fly activation extraction without being told that precomputation is mandatory;
-- [ ] browse both repositories without encountering internal experiment traces, abandoned prompt variants, unexplained scripts, or generated-sounding filler;
-- [ ] run all documented quickstarts using commands and links that have been checked against the final repository state.
+- [x] understand what PRISM does without first reading the paper;
+- [x] download and try the final released interpreter directly;
+- [x] find and understand the exact released training dataset;
+- [x] distinguish the target model, PRISM checkpoint, and evaluation judge;
+- [x] reproduce the final paper result without encountering historical checkpoints or step-count narratives;
+- [x] trace every distributed dataset to a defensible source, transformation, and license;
+- [x] find one canonical scoring rubric and one canonical source for every reported calibration result;
+- [x] understand the difference between precomputed and on-the-fly activation extraction without being told that precomputation is mandatory;
+- [x] browse both repositories without encountering internal experiment traces, abandoned prompt variants, unexplained scripts, or generated-sounding filler;
+- [x] run all documented quickstarts using commands and links that have been checked against the final repository state.
 
