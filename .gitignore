@@ -9,6 +9,7 @@ build/
 
 # Secrets / local env
 .env
+TODO.md
 
 # Run artifacts — never commit data, checkpoints, or logs
 checkpoints/
