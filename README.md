@@ -12,12 +12,11 @@ evaluation code, benchmark, and results.
 
 ## Why PRISM?
 
-An output or self-report can omit instructions that shaped a model's response.
-PRISM instead decodes the instruction set represented in response-token
-activations, including ordinary constraints, hidden objectives, and injected
-instructions.
+Models can act on instructions that are not stated in their responses. PRISM
+decodes those instructions from response-token activations, including ordinary
+constraints, hidden objectives, and injected instructions.
 
-![Comparison of output inspection and PRISM's activation-based instruction recovery](docs/why-prism.svg)
+![Ordinary, hidden, and injected instructions shape a model response; PRISM recovers them from response-token activations](docs/why-prism.svg)
 
 ## Try PRISM
 
