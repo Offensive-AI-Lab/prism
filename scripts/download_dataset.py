@@ -12,9 +12,6 @@ Usage:
     uv run python scripts/download_dataset.py                  # dest = $PRISM_DATA_DIR/prompt-only
     uv run python scripts/download_dataset.py --dest /data/prompt-only
 
-If the dataset repo is still private, set HF_TOKEN first (or pass --token);
-once it is public no token is needed.
-
 After this, every recipe trains directly (the activation cache is built
 automatically on first run); scripts/check_dataset.py re-validates the
 records, counts and split membership at any time.
@@ -51,7 +48,7 @@ def main() -> int:
     ap.add_argument("--dest", default=None,
                     help="Target dataset directory (default: $PRISM_DATA_DIR/prompt-only)")
     ap.add_argument("--token", default=os.environ.get("HF_TOKEN"),
-                    help="HF token, if the dataset repo is gated/private (default: $HF_TOKEN)")
+                    help="Hugging Face access token (default: $HF_TOKEN)")
     args = ap.parse_args()
     dest = Path(args.dest) if args.dest else None
     if dest is None:

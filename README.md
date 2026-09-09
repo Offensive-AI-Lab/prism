@@ -72,8 +72,7 @@ decodes them into an instruction report.
 
 The target model's base weights remain frozen. Training updates only the
 projection and LoRA adapters; GRPO scores candidate instruction reports against
-the reference instruction set. The [source PDF](docs/prism-architecture.pdf)
-is included for print use.
+the reference instruction set.
 
 Training has three stages:
 
@@ -107,7 +106,6 @@ target-model responses and generated instruction lists.
 
 ```bash
 uv run python scripts/download_dataset.py
-uv run python scripts/check_dataset.py --dataset-dir "$PRISM_DATA_DIR/prompt-only"
 ```
 
 To generate and filter a new dataset instead, see the
