@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Generate the oracle dataset (prompt-only labels) for the three sources,
+# Generate the instruction-set dataset (prompt-only labels) for the three sources,
 # sequentially. Output lands in $PRISM_DATA_DIR/prompt-only/jsonl/ so the next
 # steps (scripts/clean_dataset.sh, then the recipes' precompute) pick it up
 # without rearranging files. Each source gets its own JSONL +
@@ -30,7 +30,7 @@ fi
 
 run_source () {
   local SRC="$1"
-  local OUT="$OUT_DIR/prompt_only_oracle_dataset_${SRC}.jsonl"
+  local OUT="$OUT_DIR/prompt_only_instruction_set_dataset_${SRC}.jsonl"
   local CKPT="$CKPT_ROOT/${SRC}"
   echo "==== [$(date)] starting source=$SRC ===="
   uv run python -m prism.datagen.generator \
@@ -40,7 +40,7 @@ run_source () {
     --sources "$SRC" \
     --max-per-source "$MAX_PER" \
     --paraphrases-per-example "$PARAS" \
-    --oracle-mode prompt_only \
+    --instruction-set-mode prompt_only \
     --output "$OUT" \
     --checkpoint-dir "$CKPT" \
     --concurrency "$CONCURRENCY" \
@@ -58,4 +58,4 @@ run_source if_multi_constraints
 run_source ultrachat
 
 echo "==== [$(date)] ALL SOURCES DONE ===="
-ls -lh "$OUT_DIR"/prompt_only_oracle_dataset_*.jsonl
+ls -lh "$OUT_DIR"/prompt_only_instruction_set_dataset_*.jsonl

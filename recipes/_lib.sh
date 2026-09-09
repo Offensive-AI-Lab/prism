@@ -47,7 +47,7 @@ PY="${PRISM_PYTHON:-uv run python}"
 : "${PRISM_DATA_DIR:?set PRISM_DATA_DIR to the root holding datasets + precomputed shards}"
 : "${PRISM_CKPT_DIR:?set PRISM_CKPT_DIR to the root for training checkpoints}"
 
-# Directory holding the oracle dataset: jsonl/*.jsonl plus
+# Directory holding the instruction-set dataset: jsonl/*.jsonl plus
 # valid_record_ids.json, as produced by scripts/generate_dataset.sh followed
 # by scripts/clean_dataset.sh.
 DATASET_SRC="${PRISM_DATASET_SRC:-$PRISM_DATA_DIR/prompt-only}"
@@ -75,7 +75,7 @@ _rl_ckpt_dir() {
 # ── Activation precompute (run automatically by do_sft / do_rl) ──────────────────────────────────────────────
 _require_dataset() {
   if ! compgen -G "$DATASET_SRC/jsonl/*.jsonl" >/dev/null; then
-    echo "ERROR: no oracle dataset at $DATASET_SRC/jsonl/*.jsonl" >&2
+    echo "ERROR: no instruction-set dataset at $DATASET_SRC/jsonl/*.jsonl" >&2
     echo "       Download the released dataset: uv run python scripts/download_dataset.py" >&2
     echo "       (or generate one: scripts/generate_dataset.sh + scripts/clean_dataset.sh," >&2
     echo "       or point PRISM_DATASET_SRC at an existing dataset directory)." >&2

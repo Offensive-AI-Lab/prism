@@ -397,7 +397,7 @@ def resolve_data_mode(cfg: dict) -> bool:
     """Validate the data configuration; return True for ON-THE-FLY extraction.
 
     Exactly one of ``precomputed_dir`` (activation cache) and ``dataset_paths``
-    (oracle JSONLs, activations extracted in-loop) must be set. Runs before the
+    (instruction-set JSONLs, activations extracted in-loop) must be set. Runs before the
     target model is loaded so a bad path fails in seconds, not minutes.
     """
     pre = cfg.get("precomputed_dir")
@@ -1503,7 +1503,7 @@ def parse_args():
                         "produced by prism.activations.extract with matching "
                         "hook_layer/num_tokens/dtype as the SFT checkpoint.")
     p.add_argument("--dataset-paths", nargs="+", default=None,
-                   help="Oracle JSONL files for ON-THE-FLY activation extraction from the "
+                   help="Instruction-set JSONL files for ON-THE-FLY activation extraction from the "
                         "resident target model (alternative to --precomputed-dir; "
                         "env: PRISM_DATASET_PATHS, os.pathsep-separated).")
     p.add_argument("--valid-record-ids", type=str, default=None,

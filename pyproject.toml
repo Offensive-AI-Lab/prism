@@ -44,7 +44,7 @@ Paper = "https://arxiv.org/abs/2606.09563"
 Evaluation = "https://github.com/Offensive-AI-Lab/prism-eval"
 
 [project.optional-dependencies]
-# Oracle dataset generation with a local vLLM engine (the http_async backend
+# Instruction-set dataset generation with a local vLLM engine (the http_async backend
 # needs only core deps and any OpenAI-compatible server).
 datagen = ["vllm>=0.11.0"]
 # Local Try-PRISM demo server.

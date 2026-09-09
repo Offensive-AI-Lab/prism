@@ -364,10 +364,10 @@ All tasks in this section are owned by **Codex**, except factual verification, m
 - [x] Use “training-data generation” when referring to the broader process of building examples.
 - [x] Use “generated instruction labels” or “instruction reports” for `instruction_set` (formerly `response_b`), depending on context.
 - [x] Replace “oracle reports,” “oracle data,” and “Oracle data generation” in both READMEs.
-- [~] Replace the term in public data cards, pipeline guides, recipe guides, comments shown in examples, and CLI help. *(Public Markdown and `.env.example` updated; CLI help and code comments remain for the implementation pass.)*
+- [x] Replace the term in public data cards, pipeline guides, recipe guides, comments shown in examples, and CLI help. *(Done 2026-09-09: CLI help, code comments/docstrings, recipe/script wording, and the datagen output filename all de-"oracle"-ed; the external "Activation Oracles" citation and vendored third_party code left untouched.)*
 - [x] Avoid renaming unrelated citations such as the external method “Activation Oracles.”
-- [?] Decide whether internal Python identifiers such as `oracle_mode`, `ORACLE_MODES`, output filenames, and historical checkpoint fields should also be renamed.
-- [ ] If code-level identifiers are renamed, preserve compatibility aliases for existing scripts, data, and checkpoints.
+- [x] Decide whether internal Python identifiers such as `oracle_mode`, `ORACLE_MODES`, output filenames, and historical checkpoint fields should also be renamed. *(Decided 2026-09-09 — rename fully: `oracle_mode`→`instruction_set_mode`, `ORACLE_MODES`→`INSTRUCTION_SET_MODES`, `--oracle-mode`→`--instruction-set-mode`, `prompt_only_oracle_dataset*`→`prompt_only_instruction_set_dataset*`. Audit first confirmed the released checkpoints carry NO oracle config keys and no load path reads one, so "historical checkpoint fields" was moot — nothing in the uploaded artifacts changes.)*
+- [x] If code-level identifiers are renamed, preserve compatibility aliases for existing scripts, data, and checkpoints. *(`--oracle-mode` kept as a deprecated CLI alias; the filter default accepts both new and legacy `prompt_only_oracle_dataset*.jsonl` globs; training loads `jsonl/*.jsonl` filename-agnostically. Validated: both test suites pass (prism 143, eval 203) and a no-GPU functional check confirms the alias + renamed config/CLI/builder.)*
 
 ### 9. Rewrite `prism/README.md` around user intent
 
@@ -706,7 +706,7 @@ These items were discussed in the transcript but are not automatically part of t
 - [?] Who has the original Zenity/Microsoft XPIA artifact?
 - [?] Who will request or approve XPIA redistribution permission?
 - [x] Does the current paper still report calibration kappa `0.817`, or has Table 4 been updated? *(Confirmed in task 5. The evidence needed to reproduce that value remains unresolved.)*
-- [?] Should internal code identifiers containing “oracle” be renamed, or only public documentation and CLI text?
+- [x] Should internal code identifiers containing “oracle” be renamed, or only public documentation and CLI text? *(Resolved 2026-09-09: renamed fully, with back-compat aliases — see §8.)*
 - [?] Where is the editable source for the paper architecture figure?
 - [x] Should the first local demo be a browser UI, a CLI, or both? *(Browser UI shipped in prism/demo/; CLI still open if wanted.)*
 

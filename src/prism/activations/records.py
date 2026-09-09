@@ -1,4 +1,4 @@
-"""Oracle-dataset records for ON-THE-FLY activation extraction.
+"""Instruction-set dataset records for ON-THE-FLY activation extraction.
 
 This is the in-memory counterpart of the activation cache: the same JSONL
 files, the same record filter and ``valid_record_ids.json`` mask, and the
@@ -39,7 +39,7 @@ class Record:
 
 
 def load_records(paths: Sequence[str], require_instruction_set: bool = True) -> Tuple[List[Record], dict]:
-    """Load JSONL oracle records in the given file order.
+    """Load JSONL instruction-set records in the given file order.
 
     Mirrors the extractor's record filter (``prompt`` and ``response``
     required; ``metadata.paraphrase_group_id`` carried for the split).

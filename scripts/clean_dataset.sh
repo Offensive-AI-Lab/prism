@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Dataset cleaning: rules + LLM-judge filter → valid_record_ids.json mask.
 #
-# Input: the oracle JSONLs written by scripts/generate_dataset.sh into
+# Input: the instruction-set JSONLs written by scripts/generate_dataset.sh into
 # $DATASET_DIR/jsonl/. Output: filtered JSONLs (kept / .removed / .errors) in
 # $FILTER_OUT_DIR and a valid_record_ids.json mask (bullet cap / template-leak /
 # word-fragmentation rules) next to the data — the recipes' precompute copies

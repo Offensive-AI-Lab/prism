@@ -1,1 +1,1 @@
-"""Oracle dataset generation and filtering pipeline."""
+"""Instruction-set dataset generation and filtering pipeline."""

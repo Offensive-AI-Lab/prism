@@ -925,7 +925,7 @@ def parse_args():
     p.add_argument("--precomputed-dir", type=str, default=None,
                    help="directory of precomputed activation shards (overrides PRISM_PRECOMPUTED_DIR)")
     p.add_argument("--dataset-paths", nargs="+", default=None,
-                   help="Oracle JSONL files for ON-THE-FLY activation extraction "
+                   help="Instruction-set JSONL files for ON-THE-FLY activation extraction "
                         "(env: PRISM_DATASET_PATHS). Ignored when a precomputed dir is set.")
     p.add_argument("--valid-record-ids", type=str, default=None,
                    help="valid_record_ids.json mask for --dataset-paths (default: auto-detect "

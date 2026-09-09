@@ -3,7 +3,7 @@
 Usage::
 
     uv run python -m prism.activations.extract \
-        --dataset-paths data/oracle.jsonl data/other.jsonl \
+        --dataset-paths data/instruction_set.jsonl data/other.jsonl \
         --model-id Qwen/Qwen3.5-9B \
         --layers 8,16,24,30 \
         --num-tokens 128 \

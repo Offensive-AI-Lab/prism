@@ -1,5 +1,5 @@
 """
-Oracle dataset generator
+Instruction-set dataset generator
 ========================================
 Supports two execution backends:
 
@@ -37,7 +37,7 @@ Run (offline batch — recommended for 100K):
         --model Qwen/Qwen2.5-32B-Instruct \\
         --sources if_eval if_multi_constraints ultrachat \\
         --max-per-source 2000 \\
-        --output oracle_dataset.jsonl
+        --output instruction_set_dataset.jsonl
 
 Run (async HTTP against a vLLM server):
     vllm serve Qwen/Qwen2.5-32B-Instruct --port 8000   # terminal 1
@@ -78,7 +78,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Fixed oracle prompt — identical across every record, forever
+# Fixed instruction-set prompt — identical across every record, forever
 # ---------------------------------------------------------------------------
 RETRIEVAL_PROMPT_MULTI_TURN = (
     "Look at the very first user message in this conversation. "
@@ -88,10 +88,10 @@ RETRIEVAL_PROMPT_MULTI_TURN = (
     "If there is only one instruction and no constraints, list just that single instruction."
 )
 
-# Single-turn variant: oracle sees only prompt, not response. Avoids the
-# failure mode where the model keeps "doing the task" after response.
+# Single-turn variant: the labeler sees only the prompt, not the response.
+# Avoids the failure mode where the model keeps "doing the task" after response.
 # Uses delimiter markers so strict-formatting constraints inside prompt
-# (e.g. "no commas", "all caps") aren't mistaken as instructions to the oracle.
+# (e.g. "no commas", "all caps") aren't mistaken as instructions to the labeler.
 RETRIEVAL_PROMPT = (
     "You are an instruction analyst. Below, between the markers "
     "<<<MESSAGE_START>>> and <<<MESSAGE_END>>>, is a user message that asked "
@@ -122,7 +122,7 @@ PARAPHRASE_PROMPT = (
     "Instruction:\n{prompt}"
 )
 
-ORACLE_MODES = ("multi_turn", "prompt_only")
+INSTRUCTION_SET_MODES = ("multi_turn", "prompt_only")
 
 PHASES = ["prompts", "paraphrases", "phase1", "phase2", "done"]
 
@@ -152,15 +152,15 @@ class GeneratorConfig:
     concurrency: int = 64
 
     # Dataset
-    output_path: str = "oracle_dataset.jsonl"
+    output_path: str = "instruction_set_dataset.jsonl"
     max_examples_per_source: Optional[int] = 2000
     min_response_words: int = 20
     min_instruction_set_chars: int = 80
 
-    # Oracle prompt mode
+    # Instruction-set labeling mode
     # "multi_turn"   — RETRIEVAL_PROMPT_MULTI_TURN is asked as a third turn after prompt/response
     # "prompt_only"  — RETRIEVAL_PROMPT is asked in a fresh context on prompt alone
-    oracle_mode: str = "multi_turn"
+    instruction_set_mode: str = "multi_turn"
 
     # Paraphrases
     generate_paraphrases: bool = True
@@ -178,7 +178,7 @@ class GeneratorConfig:
         max_tokens / backend) can never silently mix differently-generated
         labels under the same run_id."""
         active_prompts = [
-            RETRIEVAL_PROMPT if self.oracle_mode == "prompt_only" else RETRIEVAL_PROMPT_MULTI_TURN
+            RETRIEVAL_PROMPT if self.instruction_set_mode == "prompt_only" else RETRIEVAL_PROMPT_MULTI_TURN
         ]
         if self.generate_paraphrases and self.paraphrases_per_example > 0:
             active_prompts.append(PARAPHRASE_PROMPT)
@@ -191,7 +191,7 @@ class GeneratorConfig:
             "max_examples_per_source": self.max_examples_per_source,
             "generate_paraphrases":    self.generate_paraphrases,
             "paraphrases_per_example": self.paraphrases_per_example,
-            "oracle_mode":             self.oracle_mode,
+            "instruction_set_mode":    self.instruction_set_mode,
             "backend":                 self.backend,
             "temperature":             self.temperature,
             "max_tokens_response_a":   self.max_tokens_response_a,
@@ -228,7 +228,7 @@ class CheckpointManager:
             logger.info(f"Resuming [{self.run_id}]  checkpoint: {self.dir}")
 
         # Legacy layout guard: before phase-keyed checkpoint files, paraphrases
-        # (phase 0) and oracle labels (phase 2) both appended to the same
+        # (phase 0) and instruction-set labels (phase 2) both appended to the same
         # responses_b.jsonl, cross-contaminating labels on resume.
         legacy = [
             name for name in ("responses.jsonl", "responses_b.jsonl")
@@ -243,7 +243,7 @@ class CheckpointManager:
                 raise RuntimeError(
                     f"Checkpoint dir {self.dir} contains legacy checkpoint "
                     f"files ({', '.join(legacy)}). In that layout paraphrases "
-                    "(phase 0) and oracle labels (phase 2) shared "
+                    "(phase 0) and instruction-set labels (phase 2) shared "
                     "responses_b.jsonl, so its contents may be "
                     "cross-contaminated. Refusing to resume with paraphrases "
                     "enabled — delete the checkpoint directory to regenerate "
@@ -384,7 +384,7 @@ def fmt_instruction_set_messages(
     response: str,
     mode: str = "multi_turn",
 ) -> list[dict]:
-    """Build the oracle-prompt conversation.
+    """Build the instruction-set labeling conversation.
 
     mode="multi_turn"  — three-turn context (prompt → response → RETRIEVAL_PROMPT_MULTI_TURN).
                          Label reflects what the model attended to during generation,
@@ -402,7 +402,7 @@ def fmt_instruction_set_messages(
             {"role": "assistant",  "content": response},
             {"role": "user",       "content": RETRIEVAL_PROMPT_MULTI_TURN},
         ]
-    raise ValueError(f"Unknown oracle_mode: {mode!r}. Expected one of {ORACLE_MODES}.")
+    raise ValueError(f"Unknown instruction_set_mode: {mode!r}. Expected one of {INSTRUCTION_SET_MODES}.")
 
 
 def fmt_paraphrase_prompt(prompt: str) -> str:
@@ -737,7 +737,7 @@ class DatasetPipeline:
 
     Phase 0  Prompt collection + paraphrase expansion  → raw_items.jsonl
     Phase 1  Generate response for all prompts       → responses.jsonl
-    Phase 2  Generate instruction_set (oracle prompt)        → responses_b.jsonl
+    Phase 2  Generate instruction_set (instruction-set prompt) → responses_b.jsonl
 
     Each generation phase works in chunks of cfg.chunk_size. After every
     chunk the results are appended to the checkpoint file. On resume, only
@@ -783,14 +783,14 @@ class DatasetPipeline:
             label="response",
         )
 
-        # ---- Phase 2: generate instruction_set (oracle prompt) ----
+        # ---- Phase 2: generate instruction_set (instruction-set prompt) ----
         self.ckpt.set_phase("phase2")
         # Only items where response passed the quality gate
         rb_messages = []
         valid_indices = []
         for i, (item, ra) in enumerate(zip(raw_items, responses)):
             if ra and len(ra.split()) >= self.cfg.min_response_words:
-                rb_messages.append(fmt_instruction_set_messages(item[0], ra, mode=self.cfg.oracle_mode))
+                rb_messages.append(fmt_instruction_set_messages(item[0], ra, mode=self.cfg.instruction_set_mode))
                 valid_indices.append(i)
 
         logger.info(
@@ -1013,7 +1013,7 @@ class JSONLWriter:
 # CLI
 # ---------------------------------------------------------------------------
 def build_arg_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(description="Generate activation oracle dataset")
+    p = argparse.ArgumentParser(description="Generate the instruction-set dataset")
     p.add_argument("--backend", choices=["vllm_offline", "http_async"],
                    default="vllm_offline")
     p.add_argument("--model", type=str, default="Qwen/Qwen3.5-9B")
@@ -1022,7 +1022,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument("--sources", nargs="+", default=["ultrachat"],
                    choices=list(LOADER_REGISTRY.keys()))
     p.add_argument("--synthetic-file", type=str, default=None)
-    p.add_argument("--output", type=str, default="oracle_dataset.jsonl")
+    p.add_argument("--output", type=str, default="instruction_set_dataset.jsonl")
     p.add_argument("--max-per-source", type=lambda x: None if x.lower() == "none" else int(x), default="none")
     p.add_argument("--no-paraphrases", action="store_true")
     p.add_argument("--paraphrases-per-example", type=int, default=0)
@@ -1034,10 +1034,13 @@ def build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument("--checkpoint-dir", type=str, default="generation_checkpoints")
     p.add_argument("--chunk-size", type=int, default=256,
                    help="Save checkpoint after every N generations")
-    p.add_argument("--oracle-mode", choices=list(ORACLE_MODES), default="multi_turn",
+    p.add_argument("--instruction-set-mode", "--oracle-mode",
+                   dest="instruction_set_mode",
+                   choices=list(INSTRUCTION_SET_MODES), default="multi_turn",
                    help="multi_turn: RETRIEVAL_PROMPT_MULTI_TURN asked after prompt/response. "
                         "prompt_only: RETRIEVAL_PROMPT asked on prompt alone "
-                        "in a fresh context (avoids response drift).")
+                        "in a fresh context (avoids response drift). "
+                        "(--oracle-mode is a deprecated alias.)")
     return p
 
 
@@ -1058,7 +1061,7 @@ def main():
         temperature=args.temperature,
         checkpoint_dir=args.checkpoint_dir,
         chunk_size=args.chunk_size,
-        oracle_mode=args.oracle_mode,
+        instruction_set_mode=args.instruction_set_mode,
     )
 
     # Run key — deterministic ID for this config combination

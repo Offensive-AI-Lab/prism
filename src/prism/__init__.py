@@ -6,7 +6,7 @@ Trains activation-reading monitor models for
 https://github.com/Offensive-AI-Lab/prism-eval.
 
 Subpackages:
-    datagen      -- oracle dataset generation and filtering
+    datagen      -- instruction-set dataset generation and filtering
     activations  -- offline activation precompute (sharded safetensors)
     sft          -- supervised finetuning of the monitor (projection + LoRA)
     rl           -- GRPO with an LLM-judge reward on top of the SFT checkpoint

@@ -1,5 +1,5 @@
 """
-Filter oracle dataset JSONLs to remove low-quality instruction_set entries.
+Filter instruction-set dataset JSONLs to remove low-quality instruction_set entries.
 
 Two-tier filtering:
   Tier 1 (rule-based): catches empty, meta-response, retrieval_prompt echo, etc.
@@ -47,7 +47,10 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class FilterConfig:
-    input_globs: list[str] = field(default_factory=lambda: ["prompt_only_oracle_dataset*.jsonl"])
+    input_globs: list[str] = field(default_factory=lambda: [
+        "prompt_only_instruction_set_dataset*.jsonl",
+        "prompt_only_oracle_dataset*.jsonl",  # legacy filename from older generator runs
+    ])
     output_dir: str = "filtered"
     dry_run: bool = False
     rules_only: bool = False
@@ -163,7 +166,7 @@ def apply_rules(rec: dict, cfg: FilterConfig) -> tuple[bool, str]:
     if any(m in instruction_set for m in cfg.marker_strings):
         return False, "marker_leak"
 
-    # 5. No bullet markers at all — the oracle prompt asks for a bullet list
+    # 5. No bullet markers at all — the instruction-set prompt asks for a bullet list
     if "- " not in instruction_set and "* " not in instruction_set:
         return False, "no_bullets"
 
@@ -650,7 +653,7 @@ def build_tokenizer(model: str):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Filter oracle dataset: rule-based + LLM judge",
+        description="Filter the instruction-set dataset: rule-based + LLM judge",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--input", nargs="+", required=True,
@@ -693,7 +696,10 @@ def main():
     args = parser.parse_args()
 
     cfg = FilterConfig(
-        input_globs=args.input or ["prompt_only_oracle_dataset*.jsonl"],
+        input_globs=args.input or [
+            "prompt_only_instruction_set_dataset*.jsonl",
+            "prompt_only_oracle_dataset*.jsonl",  # legacy
+        ],
         output_dir=args.output_dir,
         dry_run=args.dry_run,
         rules_only=args.rules_only,
