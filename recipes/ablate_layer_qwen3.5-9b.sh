@@ -24,8 +24,8 @@ _load_dotenv .env
 # where `uv run` hits NFS flock issues (os error 37).
 PY="${PRISM_PYTHON:-uv run python}"
 : "${LAYER:?set LAYER (ablation grid: 2 6 10 13 16 19 23 27 31)}"
-: "${PRISM_DATA_DIR:?set PRISM_DATA_DIR (root holding prompt-only/jsonl)}"
-DATASET_JSONL_DIR="${PRISM_DATASET_SRC:-$PRISM_DATA_DIR/prompt-only}/jsonl"
+: "${PRISM_DATA_DIR:?set PRISM_DATA_DIR (root holding jsonl/)}"
+DATASET_JSONL_DIR="${PRISM_DATASET_SRC:-$PRISM_DATA_DIR}/jsonl"
 if ! compgen -G "$DATASET_JSONL_DIR/*.jsonl" >/dev/null; then
   echo "ERROR: no instruction-set dataset at $DATASET_JSONL_DIR/*.jsonl" >&2
   echo "       Generate it first: scripts/generate_dataset.sh, then scripts/clean_dataset.sh" >&2

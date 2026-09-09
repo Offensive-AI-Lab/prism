@@ -48,8 +48,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class FilterConfig:
     input_globs: list[str] = field(default_factory=lambda: [
-        "prompt_only_instruction_set_dataset*.jsonl",
-        "prompt_only_oracle_dataset*.jsonl",  # legacy filename from older generator runs
+        "instruction_set_dataset*.jsonl",
     ])
     output_dir: str = "filtered"
     dry_run: bool = False
@@ -697,8 +696,7 @@ def main():
 
     cfg = FilterConfig(
         input_globs=args.input or [
-            "prompt_only_instruction_set_dataset*.jsonl",
-            "prompt_only_oracle_dataset*.jsonl",  # legacy
+            "instruction_set_dataset*.jsonl",
         ],
         output_dir=args.output_dir,
         dry_run=args.dry_run,

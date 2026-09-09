@@ -17,7 +17,7 @@ The Ai2 source also lists third-party model-output terms in its dataset card.
 Download the records using
 [`scripts/download_dataset.py`](../scripts/download_dataset.py). It places
 `if_eval.jsonl`, `if_multi_constraints.jsonl`, and `ultrachat.jsonl` in
-`$PRISM_DATA_DIR/prompt-only/jsonl/`, with `valid_record_ids.json` beside that
+`$PRISM_DATA_DIR/jsonl/`, with `valid_record_ids.json` beside that
 directory. The [training instructions](../README.md#1-prepare-the-data)
 show the download command.
 

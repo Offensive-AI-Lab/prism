@@ -44,7 +44,7 @@ FINETUNE_CONFIG = {
     # ─── Precomputed activations ────────────────────────────────────────────────
     # Set to a directory path (produced by `python -m prism.activations`) to use
     # precomputed activations instead of extracting on-the-fly. When set, hook
-    # registration is skipped. A prompt-only directory additionally carries a
+    # registration is skipped. The cache directory additionally carries a
     # valid_record_ids.json mask (≤6-bullet cap + template-leak / word-
     # fragmentation filter) honoured by PrecomputedActivationDataset.
     # Set via PRISM_PRECOMPUTED_DIR / --precomputed-dir; None = on-the-fly

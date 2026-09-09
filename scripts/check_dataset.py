@@ -14,7 +14,7 @@ Deterministic, offline checks over the dataset directory
      checksum over the val-split ids.
 
 Usage:
-    uv run python scripts/check_dataset.py --dataset-dir $PRISM_DATA_DIR/prompt-only
+    uv run python scripts/check_dataset.py --dataset-dir $PRISM_DATA_DIR
 """
 
 from __future__ import annotations

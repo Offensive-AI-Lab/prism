@@ -19,7 +19,7 @@ to be touched.
 Usage:
     python -m prism.datagen.build_valid_record_ids \
         --input-glob '$PRISM_DATA_DIR/filtered/*.jsonl' \
-        --precomputed-dir $PRISM_DATA_DIR/prompt-only \
+        --precomputed-dir $PRISM_DATA_DIR \
         --max-bullets 6
 """
 

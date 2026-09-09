@@ -27,8 +27,8 @@ scripts/generate_dataset.sh
 scripts/clean_dataset.sh
 ```
 
-Generation writes `prompt-only/jsonl/*.jsonl`; cleaning writes
-`prompt-only/valid_record_ids.json`. The cleaned record copies under
+Generation writes `jsonl/*.jsonl`; cleaning writes
+`valid_record_ids.json`. The cleaned record copies under
 `filtered/` are intermediate outputs, not the training input directory.
 Set `PRISM_DATA_DIR` to this root when training on the new records.
 

@@ -9,8 +9,8 @@ expect:
     <dest>/valid_record_ids.json
 
 Usage:
-    uv run python scripts/download_dataset.py                  # dest = $PRISM_DATA_DIR/prompt-only
-    uv run python scripts/download_dataset.py --dest /data/prompt-only
+    uv run python scripts/download_dataset.py                  # dest = $PRISM_DATA_DIR
+    uv run python scripts/download_dataset.py --dest /data/prism-training-data
 
 After this, every recipe trains directly (the activation cache is built
 automatically on first run); scripts/check_dataset.py re-validates the
@@ -46,7 +46,7 @@ def sha256_of(path: Path, chunk: int = 1 << 20) -> str:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--dest", default=None,
-                    help="Target dataset directory (default: $PRISM_DATA_DIR/prompt-only)")
+                    help="Target dataset directory (default: $PRISM_DATA_DIR)")
     ap.add_argument("--token", default=os.environ.get("HF_TOKEN"),
                     help="Hugging Face access token (default: $HF_TOKEN)")
     args = ap.parse_args()
@@ -56,7 +56,7 @@ def main() -> int:
         if not data_dir:
             print("Set PRISM_DATA_DIR (e.g. export PRISM_DATA_DIR=./prism-data) or pass --dest.", file=sys.stderr)
             return 1
-        dest = Path(data_dir) / "prompt-only"
+        dest = Path(data_dir)
 
     from huggingface_hub import hf_hub_download
 

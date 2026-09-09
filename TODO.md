@@ -355,8 +355,8 @@ All tasks in this section are owned by **Codex**, except factual verification, m
 - [x] Replace “oracle reports,” “oracle data,” and “Oracle data generation” in both READMEs.
 - [x] Replace the term in public data cards, pipeline guides, recipe guides, comments shown in examples, and CLI help. *(Done 2026-09-09: CLI help, code comments/docstrings, recipe/script wording, and the datagen output filename all de-"oracle"-ed; the external "Activation Oracles" citation and vendored third_party code left untouched.)*
 - [x] Avoid renaming unrelated citations such as the external method “Activation Oracles.”
-- [x] Decide whether internal Python identifiers such as `oracle_mode`, `ORACLE_MODES`, output filenames, and historical checkpoint fields should also be renamed. *(Decided 2026-09-09 — rename fully: `oracle_mode`→`instruction_set_mode`, `ORACLE_MODES`→`INSTRUCTION_SET_MODES`, `--oracle-mode`→`--instruction-set-mode`, `prompt_only_oracle_dataset*`→`prompt_only_instruction_set_dataset*`. Audit first confirmed the released checkpoints carry NO oracle config keys and no load path reads one, so "historical checkpoint fields" was moot — nothing in the uploaded artifacts changes.)*
-- [x] If code-level identifiers are renamed, preserve compatibility aliases for existing scripts, data, and checkpoints. *(`--oracle-mode` kept as a deprecated CLI alias; the filter default accepts both new and legacy `prompt_only_oracle_dataset*.jsonl` globs; training loads `jsonl/*.jsonl` filename-agnostically. Validated: both test suites pass (prism 143, eval 203) and a no-GPU functional check confirms the alias + renamed config/CLI/builder.)*
+- [x] Decide whether internal Python identifiers such as `oracle_mode`, `ORACLE_MODES`, output filenames, and historical checkpoint fields should also be renamed. *(Renamed to `instruction_set_mode`, `INSTRUCTION_SET_MODES`, `--instruction-set-mode`, and `instruction_set_dataset*`. The released checkpoints contain no affected configuration keys.)*
+- [x] If code-level identifiers are renamed, preserve compatibility aliases for existing scripts, data, and checkpoints. *(`--oracle-mode` remains a deprecated CLI alias; training reads JSONLs without depending on their filenames.)*
 
 ### 9. Rewrite `prism/README.md` around user intent
 
@@ -690,7 +690,7 @@ These items were discussed in the transcript but are not automatically part of t
 ## Human questions and blockers
 
 - [x] Where is the Modal/UI code discussed in the transcript? *(Packaged in `prism/demo/`.)*
-- [x] Where are the exact filtered training JSONLs and validity mask used for the released checkpoints? *(NFS: precomputed_data/qwen3.5-9b-last128-v5-prompt-only/relabeled_jsonl/ + valid_record_ids.json; 203,589 of 277,496 records pass the mask; same record set for all three target models.)*
+- [x] Where are the exact filtered training JSONLs and validity mask used for the released checkpoints? *(The released source files and `valid_record_ids.json` select 203,589 of 277,496 records; the same record set is used for all three target models.)*
 - [x] Which Hugging Face organization and repository should host the training dataset? *(Offensive-AI-Lab/prism-training-dataset.)*
 - [x] Is the original assembled indirect prompt injection artifact required? *(No. It is not distributed; the public path reconstructs from the upstream benchmarks.)*
 - [x] Is redistribution permission required for the assembled artifact? *(No, because it is not redistributed.)*

@@ -6,8 +6,8 @@
 #
 # Pipeline per target model:
 #     precompute → SFT (projection + LoRA on frozen activations) → GRPO.
-# The gemma-2 / ministral recipes reuse the Qwen-era prompt-only records
-# verbatim (deliberate off-manifold test; the prompt-only instruction_set labels
+# The gemma-2 / ministral recipes reuse the Qwen-generated records
+# verbatim (a deliberate off-manifold test; the instruction_set labels
 # are target-model-independent); only activations are re-extracted per model.
 #
 # Required environment (see .env.example):
@@ -50,7 +50,7 @@ PY="${PRISM_PYTHON:-uv run python}"
 # Directory holding the instruction-set dataset: jsonl/*.jsonl plus
 # valid_record_ids.json, as produced by scripts/generate_dataset.sh followed
 # by scripts/clean_dataset.sh.
-DATASET_SRC="${PRISM_DATASET_SRC:-$PRISM_DATA_DIR/prompt-only}"
+DATASET_SRC="${PRISM_DATASET_SRC:-$PRISM_DATA_DIR}"
 PRECOMP_BASE="$PRISM_DATA_DIR/precomputed"
 CKPT_BASE="$PRISM_CKPT_DIR"
 
@@ -60,8 +60,8 @@ nvidia-smi -L 2>/dev/null || echo "(no nvidia-smi)"
 echo "======================================================================"
 
 _precompute_dir() {
-  if [ "${SMOKE:-0}" = "1" ]; then echo "$PRECOMP_BASE/SMOKE-${TAG}-prompt-only";
-  else echo "$PRECOMP_BASE/${TAG}-prompt-only"; fi
+  if [ "${SMOKE:-0}" = "1" ]; then echo "$PRECOMP_BASE/SMOKE-${TAG}";
+  else echo "$PRECOMP_BASE/${TAG}"; fi
 }
 _sft_ckpt_dir() {
   if [ "${SMOKE:-0}" = "1" ]; then echo "$CKPT_BASE/SMOKE-sft-${TAG}";

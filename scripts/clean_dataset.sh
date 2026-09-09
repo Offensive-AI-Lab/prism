@@ -17,7 +17,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
 : "${PRISM_DATA_DIR:?set PRISM_DATA_DIR to the root for datasets}"
-TGT_DIR="${DATASET_DIR:-$PRISM_DATA_DIR/prompt-only}"
+TGT_DIR="${DATASET_DIR:-$PRISM_DATA_DIR}"
 FILTER_OUT="${FILTER_OUT_DIR:-$PRISM_DATA_DIR/filtered}"
 BASE_URL="${DATAGEN_BASE_URL:-http://localhost:8089/v1}"
 MODEL="${DATAGEN_MODEL:-Qwen/Qwen3.5-9B}"

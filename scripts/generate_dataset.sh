@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Generate the instruction-set dataset (prompt-only labels) for the three sources,
-# sequentially. Output lands in $PRISM_DATA_DIR/prompt-only/jsonl/ so the next
+# Generate instruction-set labels for the three sources from each prompt alone.
+# Output lands in $PRISM_DATA_DIR/jsonl/ so the next
 # steps (scripts/clean_dataset.sh, then the recipes' precompute) pick it up
 # without rearranging files. Each source gets its own JSONL +
 # checkpoint dir so a failure in one source does not affect the others. Needs an
@@ -13,7 +13,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
 : "${PRISM_DATA_DIR:?set PRISM_DATA_DIR to the root for generated datasets}"
-OUT_DIR="${DATAGEN_OUT_DIR:-$PRISM_DATA_DIR/prompt-only/jsonl}"
+OUT_DIR="${DATAGEN_OUT_DIR:-$PRISM_DATA_DIR/jsonl}"
 CKPT_ROOT="${DATAGEN_CKPT_DIR:-$PRISM_DATA_DIR/datagen_checkpoints}"
 BASE_URL="${DATAGEN_BASE_URL:-http://localhost:8089/v1}"
 MODEL="${DATAGEN_MODEL:-Qwen/Qwen3.5-9B}"
@@ -30,7 +30,7 @@ fi
 
 run_source () {
   local SRC="$1"
-  local OUT="$OUT_DIR/prompt_only_instruction_set_dataset_${SRC}.jsonl"
+  local OUT="$OUT_DIR/instruction_set_dataset_${SRC}.jsonl"
   local CKPT="$CKPT_ROOT/${SRC}"
   echo "==== [$(date)] starting source=$SRC ===="
   uv run python -m prism.datagen.generator \
@@ -58,4 +58,4 @@ run_source if_multi_constraints
 run_source ultrachat
 
 echo "==== [$(date)] ALL SOURCES DONE ===="
-ls -lh "$OUT_DIR"/prompt_only_instruction_set_dataset_*.jsonl
+ls -lh "$OUT_DIR"/instruction_set_dataset_*.jsonl
