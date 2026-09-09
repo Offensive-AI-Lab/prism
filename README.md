@@ -10,6 +10,15 @@ Main Conference. This repository includes the local demo and training pipeline;
 [prism-eval](https://github.com/Offensive-AI-Lab/prism-eval) contains the
 evaluation code, benchmark, and results.
 
+## Why PRISM?
+
+An output or self-report can omit instructions that shaped a model's response.
+PRISM instead decodes the instruction set represented in response-token
+activations, including ordinary constraints, hidden objectives, and injected
+instructions.
+
+![Comparison of output inspection and PRISM's activation-based instruction recovery](docs/why-prism.svg)
+
 ## Try PRISM
 
 The demo runs on your own GPU. Use Python 3.13 or later and
@@ -24,14 +33,13 @@ uv run python demo/app.py
 ```
 
 Open [localhost:7860](http://127.0.0.1:7860), choose an example or enter your own
-prompt, and generate a response. Then ask PRISM to recover the instructions
+prompt, and generate a response. Then run PRISM to recover the instructions
 from that response's activations.
 
 ![PRISM local demo](docs/demo.png)
 
-The demo follows the pipeline from left to right: generate a target-model
-response, inspect the response-token span used for activation extraction, and
-recover the instruction set with PRISM.
+The three panels show the target-model response, the response tokens whose
+activations PRISM reads, and the recovered instruction set.
 
 On first launch, the demo downloads Qwen3.5-9B (about 18 GB) and the two Qwen
 PRISM checkpoints (about 266 MB each). The target model uses the Hugging Face
@@ -60,6 +68,13 @@ PRISM takes residual-stream activations from up to the last 128 response tokens 
 selected layer of the frozen target model. A learned projection maps those
 activations into input embeddings. The same model, with LoRA adapters enabled,
 decodes them into an instruction report.
+
+![PRISM architecture: activation extraction, instruction recovery, and GRPO training](docs/prism-architecture.png)
+
+The target model's base weights remain frozen. Training updates only the
+projection and LoRA adapters; GRPO scores candidate instruction reports against
+the reference instruction set. The [source PDF](docs/prism-architecture.pdf)
+is included for print use.
 
 Training has three stages:
 

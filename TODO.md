@@ -503,18 +503,18 @@ Tasks:
 
 **Owners: Codex for concept, captions, and visual direction; Claude Code for placing assets and updating links; human approval for style**
 
-- [ ] Create a simple “Why PRISM?” teaser showing:
-  - [ ] an agent performing a task;
-  - [ ] the limitation of asking the agent to self-report what it is doing;
-  - [ ] PRISM reading internal activations;
-  - [ ] PRISM returning the instructions currently represented.
-- [ ] Create or adapt a clean PRISM architecture/pipeline diagram.
-- [ ] Label its stages to correspond exactly to the README and pipeline guide.
-- [ ] Prefer repository-owned SVG source plus a rendered PNG only if GitHub compatibility requires it.
-- [ ] Add useful alt text and concise captions.
+- [x] Create a simple “Why PRISM?” teaser showing:
+  - [x] an agent performing a task;
+  - [x] the limitation of asking the agent to self-report what it is doing;
+  - [x] PRISM reading internal activations;
+  - [x] PRISM returning the instructions currently represented.
+- [x] Create or adapt a clean PRISM architecture/pipeline diagram. *(The supplied paper figure is retained as PDF and rendered to PNG for the README.)*
+- [x] Label its stages to correspond exactly to the README and pipeline guide.
+- [x] Prefer repository-owned SVG source plus a rendered PNG only if GitHub compatibility requires it. *(The “Why PRISM?” figure is SVG; the architecture figure includes both PDF and PNG.)*
+- [x] Add useful alt text and concise captions.
 - [ ] Reuse a consistent visual language in a future paper website.
-- [ ] Avoid decorative AI imagery that makes the project appear less technical or authoritative.
-- [?] Locate the editable source for the paper's existing architecture figure.
+- [x] Avoid decorative AI imagery that makes the project appear less technical or authoritative.
+- [~] Locate the editable source for the paper's existing architecture figure. *(A publication-quality PDF was supplied; an editable vector source was not.)*
 
 ---
 
@@ -536,11 +536,11 @@ Tasks:
 - [x] Generate or accept the target model's response. *(UI generates; the API also accepts a pasted `assistant_response`.)*
 - [x] Extract the relevant response-token activations.
 - [x] Decode and display PRISM's recovered instruction report.
-- [x] Display prompt, model response, and PRISM report with clear labels.
+- [x] Display prompt, model response, and PRISM report with clear labels. *(Final UI wording reviewed: target-model response, response-token activations, and recovered instructions.)*
 - [x] Use predictable model-cache and checkpoint directories. *(HF cache + ./checkpoints / PRISM_DEMO_CHECKPOINT_DIR.)*
 - [x] Provide one supported launch command.
 - [x] Add actionable errors for missing CUDA, insufficient memory, missing gated-model access, and checkpoint/model mismatch. *(CUDA, VRAM, OOM, SHA mismatch; the base model is not gated.)*
-- [x] Add a screenshot directly below the quickstart. *(`docs/demo.png`, with a concise workflow caption.)*
+- [x] Add a screenshot directly below the quickstart. *(`docs/demo.png`, refreshed after the final UI wording pass, with a concise workflow caption.)*
 - [ ] Consider a Colab only after the local path is stable.
 - [x] Put “Try PRISM” before instructions for training PRISM from scratch.
 
@@ -596,14 +596,14 @@ Tasks:
 - [x] Verify target model IDs match.
 - [x] Verify hook layers match.
 - [x] Verify projection dimensions and activation-window settings match.
-- [ ] Verify the final result values match the paper.
+- [x] Verify the final result values match the paper. *(Checked against the accepted manuscript dated 2026-08-31; the main table matched and the indirect prompt injection table was corrected to the paper's exact columns and values.)*
 - [x] Verify dataset names and record counts match.
 - [x] Verify judge model names and endpoint examples match.
 - [x] Verify reward definitions and metric names match. *(test_reward_equivalence pins it.)*
 - [x] Verify the canonical scoring prompt and rubric match the GRPO reward implementation. *(SYSTEM_PROMPT == scoring.txt, byte-identical, 6054 chars.)*
 - [x] Verify citation metadata and author ordering match.
 - [x] Verify repository and paper URLs match. *(arXiv 2606.09563 everywhere; confirm the HF checkpoint repos are public before announcing.)*
-- [ ] Ensure README, data card, `NOTICE`, and license claims do not contradict one another.
+- [x] Ensure README, data card, `NOTICE`, and license claims do not contradict one another. *(Checked against the current upstream source cards and licenses; `NOTICE` is now included in the PRISM package metadata.)*
 
 ### 22. Documentation and packaging checks
 
@@ -624,13 +624,13 @@ Tasks:
 
 **Owner: Codex, followed by Rahul/Gilad approval**
 
-- [ ] Read both READMEs from top to bottom as a new user who has not read the paper.
-- [ ] Read every retained public document for generated-sounding prose.
-- [ ] Remove redundant summaries, scene-setting, “this document covers” language, and excessive warnings.
-- [ ] Remove sentences that do not help a user understand, use, reproduce, extend, or cite PRISM.
-- [ ] Check that technical terms are introduced before they are abbreviated.
-- [ ] Keep detailed material in the appropriate linked document rather than repeating it in the README.
-- [ ] Confirm that the final tone is confident but does not overclaim.
+- [x] Read both READMEs from top to bottom as a new user who has not read the paper.
+- [x] Read every retained public document for generated-sounding prose.
+- [x] Remove redundant summaries, scene-setting, “this document covers” language, and excessive warnings.
+- [x] Remove sentences that do not help a user understand, use, reproduce, extend, or cite PRISM.
+- [x] Check that technical terms are introduced before they are abbreviated.
+- [x] Keep detailed material in the appropriate linked document rather than repeating it in the README.
+- [x] Confirm that the final tone is confident but does not overclaim.
 - [ ] Obtain final author approval for results, data provenance, licensing, visuals, and the demo instructions.
 
 ---

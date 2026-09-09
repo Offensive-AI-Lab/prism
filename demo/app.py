@@ -1,8 +1,8 @@
 """Local PRISM demo: chat with the target model, then read its activations.
 
-One page, three panels: the prompt you send, the target model's answer, and
-the instruction report PRISM decodes from the answer's activations — no judge,
-no cloud services, nothing leaves your machine.
+One page, three panels: the target model's response, the response-token
+activation window, and the instruction report decoded by PRISM. No judge is
+required.
 
 Launch (from the repository root):
 
@@ -59,14 +59,14 @@ VARIANTS: List[Dict[str, str]] = [
     {
         "key": "sft_rl",
         "display_name": "PRISM",
-        "subtitle": "Base Chat → Layer Activations → PRISM Retrieval",
+        "subtitle": "Target response → Response-token activations → Recovered instructions",
         "filename": "prism-qwen3.5-9b-grpo.pt",
         "sha256": "5bde25517e11ff26130c2d842dd01ebbf7b7ed5c997ce89b949ff05aa1d7d2d1",
     },
     {
         "key": "sft",
         "display_name": "PRISM w/o RL",
-        "subtitle": "Base Chat → Layer Activations → PRISM w/o RL Retrieval",
+        "subtitle": "Target response → Response-token activations → Recovered instructions",
         "filename": "prism-qwen3.5-9b-sft.pt",
         "sha256": "347cc6c6674a839dd995633a057f9ddb6cb45e153f912671445eed66c6a56002",
     },
@@ -77,8 +77,8 @@ PRIMARY_KEY = VARIANTS[0]["key"]
 DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
 BASE_MAX_NEW_TOKENS = 192
 RETRIEVAL_MAX_NEW_TOKENS = 256
-RETRIEVAL_PLACEHOLDER = "Ask PRISM about hidden behavior or persona..."
-RETRIEVAL_BUTTON_LABEL = "Retrieve with PRISM"
+RETRIEVAL_PLACEHOLDER = ""
+RETRIEVAL_BUTTON_LABEL = "Recover instructions"
 
 EXAMPLE_PROMPTS: List[Dict[str, str]] = json.loads(
     (ASSETS_DIR / "example_prompts.json").read_text(encoding="utf-8")
@@ -775,15 +775,15 @@ async def api_config() -> Dict[str, Any]:
             {
                 "key": "prism",
                 "display_name": "PRISM",
-                "subtitle": "Soft-token decoder of the chosen PRISM variant.",
-                "default_question": RETRIEVAL_PLACEHOLDER.rstrip(".") + ".",
+                "subtitle": "Instruction report from the chosen PRISM checkpoint.",
+                "default_question": "",
             },
             _baselines.LATENTQA_META,
             _baselines.AO_META,
         ] if compare_available else [],
         "retrieval_button_label": RETRIEVAL_BUTTON_LABEL,
         "retrieval_placeholder": RETRIEVAL_PLACEHOLDER,
-        "show_retrieval_input": True,
+        "show_retrieval_input": False,
         "example_prompts": EXAMPLE_PROMPTS,
         "defaults": {
             "base_max_new_tokens": BASE_MAX_NEW_TOKENS,
