@@ -1,5 +1,10 @@
 # PRISM
 
+[![arXiv](https://img.shields.io/badge/arXiv-2606.09563-b31b1b.svg)](https://arxiv.org/abs/2606.09563)
+[![Hugging Face checkpoints](https://img.shields.io/badge/Hugging_Face-checkpoints-FFD21E.svg)](https://huggingface.co/Offensive-AI-Lab/models)
+[![Hugging Face dataset](https://img.shields.io/badge/Hugging_Face-dataset-FFD21E.svg)](https://huggingface.co/datasets/Offensive-AI-Lab/prism-training-dataset)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+
 PRISM reads a language model's activations and produces a list of the
 instructions represented in them. The reports can reveal ordinary requests,
 behavioral constraints, hidden objectives, and injected instructions.
