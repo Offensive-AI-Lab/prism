@@ -119,6 +119,38 @@ def ensure_checkpoints(ckpt_dir: Path) -> Dict[str, Path]:
     return resolved
 
 
+def _base_model_cached(model_id: str) -> bool:
+    """True if the base model's weights are already in the Hugging Face cache."""
+    from huggingface_hub import try_to_load_from_cache
+
+    for fname in ("model.safetensors.index.json", "model.safetensors"):
+        if isinstance(try_to_load_from_cache(model_id, fname), str):
+            return True
+    return False
+
+
+def ensure_base_model(model_id: str, status_cb=None) -> None:
+    """Pre-fetch the base model so the large first-run download is its own,
+    honestly-labelled phase — separate from loading the weights into the GPU.
+
+    No-op when the model is already cached, so a warm start behaves exactly as
+    before (checkpoints → loading into GPU → ready) with no download message.
+    """
+    if _base_model_cached(model_id):
+        return
+    from huggingface_hub import snapshot_download
+
+    if status_cb is not None:
+        status_cb(
+            "loading",
+            f"Downloading the {model_id} base model (~18 GB, first run only). "
+            f"This can take several minutes — progress is shown in the terminal.",
+        )
+    logger.info(f"Downloading base model {model_id} (~18 GB, first run only) ...")
+    snapshot_download(model_id)
+    logger.info("Base model download complete.")
+
+
 def _preflight_cuda() -> None:
     if not torch.cuda.is_available():
         raise RuntimeError(
@@ -207,7 +239,7 @@ class PrismRuntime:
         self.train_cfgs: Dict[str, dict] = {}
         self.adapter_name_of: Dict[str, str] = {}
 
-    def load(self) -> None:
+    def load(self, status_cb=None) -> None:
         from peft import LoraConfig, TaskType, get_peft_model, set_peft_model_state_dict
         from transformers import AutoProcessor, AutoModelForImageTextToText
 
@@ -224,12 +256,21 @@ class PrismRuntime:
         model_id = primary_train_cfg["model_id"]
         logger.info(f"[{primary_key}] checkpoint loaded; model_id={model_id}")
 
+        # Big first-run download as its own phase; no-op (and no message) when
+        # the model is already cached, then fall through to loading into GPU.
+        ensure_base_model(model_id, status_cb)
+        if status_cb is not None:
+            status_cb(
+                "loading",
+                "Loading Qwen3.5-9B and the PRISM adapters into the GPU (~1 min)...",
+            )
+
         processor = AutoProcessor.from_pretrained(model_id)
         self.tokenizer = processor.tokenizer
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
-        logger.info(f"Loading base model {model_id} (~18 GB on first run) ...")
+        logger.info(f"Loading base model {model_id} into GPU ...")
         t0 = time.time()
         try:
             self.model = AutoModelForImageTextToText.from_pretrained(
@@ -597,9 +638,8 @@ def _load_runtime():
         try:
             _set_state("loading", "Downloading / verifying released checkpoints...")
             paths = ensure_checkpoints(_checkpoint_dir)
-            _set_state("loading", "Loading Qwen3.5-9B and the PRISM adapters into the GPU (~1 min)...")
             rt = PrismRuntime(paths)
-            rt.load()
+            rt.load(status_cb=_set_state)
             _runtime = rt
             global _baseline_manager
             _baseline_manager = _baselines.BaselineManager(rt, _baselines_dir)
