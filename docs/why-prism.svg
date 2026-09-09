@@ -3,20 +3,14 @@
   <desc id="desc">A user task, hidden objective, and indirect prompt injection shape a target model's response. The visible response does not enumerate those instructions. PRISM reads response-token activations and produces an instruction report containing the ordinary, hidden, and injected instructions.</desc>
 
   <defs>
-    <marker id="arrow-gray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 z" fill="#7b8791"/>
-    </marker>
-    <marker id="arrow-prism" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
-      <path d="M 0 0 L 10 5 L 0 10 z" fill="#126b82"/>
-    </marker>
     <style>
       .section { font: 700 20px Arial, Helvetica, sans-serif; fill: #17212b; }
       .label { font: 700 15px Arial, Helvetica, sans-serif; letter-spacing: .6px; }
       .heading { font: 700 18px Arial, Helvetica, sans-serif; fill: #17212b; }
       .body { font: 16px Arial, Helvetica, sans-serif; fill: #27333d; }
       .small { font: 14px Arial, Helvetica, sans-serif; fill: #65727d; }
-      .arrow-gray { stroke: #7b8791; stroke-width: 2.2; fill: none; marker-end: url(#arrow-gray); }
-      .arrow-prism { stroke: #126b82; stroke-width: 4; fill: none; marker-end: url(#arrow-prism); }
+      .arrow-gray { stroke: #7b8791; stroke-width: 2.2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+      .arrow-prism { stroke: #126b82; stroke-width: 4; fill: none; stroke-linecap: round; stroke-linejoin: round; }
       .panel { stroke-width: 1.5; }
     </style>
   </defs>
@@ -47,16 +41,16 @@
     <tspan x="75" dy="25">reported losses.</tspan>
   </text>
 
-  <path d="M355 134 H410 V257 H448" class="arrow-gray"/>
-  <path d="M355 261 H448" class="arrow-gray"/>
-  <path d="M355 406 H410 V265 H448" class="arrow-gray"/>
+  <path d="M355 134 H410 M355 261 H410 M355 406 H410 M410 134 V406 M410 261 H449" class="arrow-gray"/>
+  <polygon points="449,252 465,261 449,270" fill="#7b8791"/>
 
   <rect x="465" y="190" width="220" height="142" rx="15" fill="#e9edf0" stroke="#87949e" class="panel"/>
   <text x="575" y="231" text-anchor="middle" class="heading">Target model</text>
   <text x="575" y="264" text-anchor="middle" class="body">Generates a response</text>
   <text x="575" y="297" text-anchor="middle" class="small">Instructions remain implicit</text>
 
-  <path d="M685 226 C720 226 720 135 738 135" class="arrow-gray"/>
+  <path d="M685 226 C720 226 720 135 724 135" class="arrow-gray"/>
+  <polygon points="724,126 740,135 724,144" fill="#7b8791"/>
   <text x="755" y="38" class="section">What is visible</text>
   <rect x="740" y="55" width="345" height="178" rx="14" fill="#f7f8f9" stroke="#bdc4ca" class="panel"/>
   <text x="765" y="87" class="label" fill="#66737d">MODEL RESPONSE</text>
@@ -68,7 +62,8 @@
   <text x="765" y="205" class="small">The response does not enumerate</text>
   <text x="765" y="224" class="small">the instructions that shaped it.</text>
 
-  <path d="M685 295 C720 295 720 366 738 366" class="arrow-prism"/>
+  <path d="M685 295 C720 295 720 366 724 366" class="arrow-prism"/>
+  <polygon points="724,355 740,366 724,377" fill="#126b82"/>
   <text x="755" y="286" class="section" fill="#125d72">What PRISM reads</text>
   <rect x="740" y="303" width="345" height="126" rx="14" fill="#eef7f9" stroke="#5b9bad" stroke-width="2"/>
   <text x="765" y="335" class="label" fill="#126b82">RESPONSE-TOKEN ACTIVATIONS</text>
@@ -89,12 +84,14 @@
   <text x="765" y="414" class="small">Hidden states from the generated response</text>
 
   <path d="M1085 366 H1117" class="arrow-prism"/>
+  <polygon points="1117,355 1133,366 1117,377" fill="#126b82"/>
   <rect x="1133" y="314" width="130" height="104" rx="15" fill="#126b82" stroke="#0d5264" class="panel"/>
   <text x="1198" y="356" text-anchor="middle" style="font:700 20px Arial,Helvetica,sans-serif;fill:#ffffff">PRISM</text>
   <text x="1198" y="384" text-anchor="middle" style="font:14px Arial,Helvetica,sans-serif;fill:#d8eef3">instruction</text>
   <text x="1198" y="402" text-anchor="middle" style="font:14px Arial,Helvetica,sans-serif;fill:#d8eef3">decoder</text>
 
-  <path d="M1263 366 H1286" class="arrow-prism"/>
+  <path d="M1263 366 H1274" class="arrow-prism"/>
+  <polygon points="1274,355 1290,366 1274,377" fill="#126b82"/>
   <text x="1295" y="38" class="section" fill="#0f566a">What PRISM recovers</text>
   <rect x="1290" y="55" width="285" height="450" rx="16" fill="#ffffff" stroke="#126b82" stroke-width="3"/>
   <rect x="1290" y="55" width="285" height="72" rx="14" fill="#126b82"/>
