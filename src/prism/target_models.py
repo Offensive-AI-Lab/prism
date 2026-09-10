@@ -4,7 +4,8 @@ Selected via the ``PRISM_TARGET_MODEL`` env var. When it is unset (or set to
 ``qwen3.5-9b``) every code path reproduces the original Qwen3.5-9B behaviour, so
 existing runs/tests are unaffected.
 
-Additional profiles: ``gemma2-9b`` (google/gemma-2-9b-it, hook layer 21) and
+Additional profiles: ``qwen3.5-0.8b`` (Qwen/Qwen3.5-0.8B, hook layer 12),
+``gemma2-9b`` (google/gemma-2-9b-it, hook layer 21) and
 ``ministral3-8b`` (mistralai/Ministral-3-8B-Instruct-2512-BF16, hook layer 17).
 
 Profile fields
@@ -64,6 +65,25 @@ PROFILES: dict[str, dict] = {
         lora_target_modules=None,
         needs_qwen35_rope_patch=True,
         tag="qwen3.5-9b-L16",
+    ),
+    "qwen3.5-0.8b": dict(
+        # Same Qwen3.5 architecture family as the 9B (model_type qwen3_5,
+        # Qwen3_5ForConditionalGeneration), so the load classes, processor
+        # tokenizer, and RoPE patch are identical — only the width, depth, and
+        # tag differ. hidden_size 1024 (==projection_dim); 24 decoder layers, so
+        # the mid-depth hook is layer 12 (== the 16/32 relative depth of the 9B).
+        model_id="Qwen/Qwen3.5-0.8B",
+        load_class="image_text_to_text",
+        extract_load_class="causal_lm",
+        tokenizer_via_processor=True,
+        hidden_size=1024,
+        hook_layer=12,                 # 12/24 = mid-depth (matches 16/32 on the 9B)
+        attn_implementation=None,
+        turn_end_token=None,
+        system_message_override=None,
+        lora_target_modules=None,
+        needs_qwen35_rope_patch=True,
+        tag="qwen3.5-0.8b-L12",
     ),
     "gemma2-9b": dict(
         model_id="google/gemma-2-9b-it",
