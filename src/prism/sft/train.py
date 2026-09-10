@@ -175,18 +175,23 @@ def train_step(
     # ── 6. Per-dataset loss logging ──────────────────────────────────────
     log_dict = {}
     with torch.no_grad():
-        # Per-token losses for per-dataset breakdown
-        shift_logits = outputs.logits[..., :-1, :].contiguous()
-        shift_labels = target_labels[..., 1:].contiguous()
-
-        per_token_loss = nn.functional.cross_entropy(
-            shift_logits.view(-1, shift_logits.size(-1)),
-            shift_labels.view(-1),
-            reduction="none",
-        ).view(B, -1)  # [B, seq_len-1]
+        # Per-token losses for per-dataset breakdown (logging only).
+        # Computed sample-by-sample rather than as one [B*seq, vocab]
+        # cross_entropy: with a ~250k-token vocab that single fp32 softmax is
+        # many GB in one allocation (it was the SFT OOM point on large-vocab
+        # targets), whereas the per-sample form frees each [seq, vocab] softmax
+        # as it goes. Numerically identical, strictly lower peak memory.
+        logits = outputs.logits                       # [B, seq, vocab]
+        shift_labels = target_labels[..., 1:]          # [B, seq-1]
+        per_token_loss = torch.stack([
+            nn.functional.cross_entropy(
+                logits[b, :-1, :], shift_labels[b], reduction="none"
+            )
+            for b in range(B)
+        ], dim=0)                                      # [B, seq-1]
 
         # Token accuracy
-        preds = shift_logits.argmax(dim=-1)
+        preds = logits[:, :-1, :].argmax(dim=-1)
         label_mask = shift_labels != -100
         correct = (preds == shift_labels) & label_mask
         if label_mask.any():
