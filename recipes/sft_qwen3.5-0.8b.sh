@@ -6,17 +6,24 @@
 # than the 9B's sweep-sampled literals. Sweep/retune if convergence needs it —
 # note the larger effective batch below may warrant a higher lr.
 #
-# GPU utilisation: the 0.8B target is ~1.6 GB in bf16, so on a 96 GB card there
-# is huge headroom. We raise the precompute batch and the SFT micro-batch well
-# above the 9B settings (batch 4 x grad_accum 16). All knobs are env-overridable
-# — calibrate from the smoke run's peak memory (the recipe echoes nvidia-smi)
-# to push closer to the card limit.
+# GPU utilisation (calibrated on a 96 GB card): the memory wall here is NOT the
+# 0.8B model (~1.6 GB) but the LM-head cross-entropy over Qwen3.5's 248k-token
+# vocab (logits are batch x seq x vocab, fp32-upcast) plus the on-the-fly
+# extraction forward over long contexts. We therefore (a) cap the target length
+# — instruction_set labels are p99=302 tokens, so a 512 cap truncates almost
+# nothing while bounding the CE seq — and (b) use a micro-batch that survives the
+# long-context / long-label tail of real shuffled batches. Measured on-the-fly:
+# micro-batch 16 peaks ~66 GB (stable over 400+ real steps); 24 and 32 OOM.
+# The PRECOMPUTE path (default below) drops the extraction forward, so it has
+# headroom for a larger PRISM_BATCH_SIZE — raise it and watch nvidia-smi.
+# All knobs are env-overridable.
 STAGE=sft PROFILE=qwen3.5-0.8b TAG=qwen3.5-0.8b-L12 HOOK_LAYER=12
 export STAGE PROFILE TAG HOOK_LAYER
-# ── Max-GPU knobs (override on the CLI to retune) ─────────────────────────────
-export BATCH="${BATCH:-512}"                        # activation-precompute batch (frozen inference)
-export PRISM_BATCH_SIZE="${PRISM_BATCH_SIZE:-128}"  # SFT micro-batch
-export PRISM_GRAD_ACCUM="${PRISM_GRAD_ACCUM:-1}"    # effective batch = 128 x 1
+# ── GPU knobs (override on the CLI to retune) ─────────────────────────────────
+export BATCH="${BATCH:-128}"                              # activation-precompute batch (frozen, early-exit fwd)
+export PRISM_MAX_TARGET_LEN="${PRISM_MAX_TARGET_LEN:-512}"  # cap label len (p99=302) -> bounds CE memory
+export PRISM_BATCH_SIZE="${PRISM_BATCH_SIZE:-16}"        # SFT micro-batch (248k-vocab CE is the wall)
+export PRISM_GRAD_ACCUM="${PRISM_GRAD_ACCUM:-4}"         # effective batch = 16 x 4 = 64 (matches the 9B)
 export PRISM_EVAL_SAMPLES="${PRISM_EVAL_SAMPLES:-2000}"
 source "$(dirname "$0")/_lib.sh"
 do_sft

@@ -300,6 +300,14 @@ def apply_profile_overlay(cfg: dict) -> dict:
         if fv is not None:
             cfg[cfg_key] = fv
 
+    # Cap the SFT target (instruction_set) length. Large-vocab targets make the
+    # LM-head cross-entropy the memory bottleneck (batch x seq x vocab, fp32-
+    # upcast), so bounding seq lets a much larger batch fit. Only takes effect
+    # where the config has the key (SFT), so RL is unaffected.
+    mt = _env_int("PRISM_MAX_TARGET_LEN")
+    if mt is not None and "max_target_len" in cfg:
+        cfg["max_target_len"] = mt
+
     name = active_name()
     cfg["_target_profile"] = name
     if name == _DEFAULT:
