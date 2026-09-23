@@ -171,11 +171,14 @@ RL_CONFIG = {
     # prevents the "94 GB in use, 234 MB unallocated, can't fit next 1 GB"
     # allocator-fragmentation OOM pattern observed in early runs.
     "empty_cache_each_step": True,
-    "gen_temperature": 1.2,    # Bumped from 1.0 → 1.2 to widen rollout
+    "gen_temperature": float(os.environ.get("PRISM_GEN_TEMP", "1.2")),
+                               # Default 1.2: bumped from 1.0 to widen rollout
                                # diversity → larger group reward spread →
                                # more groups survive the dynamic-sampling
                                # filter. Pair with top_p=0.9 if degenerate
                                # / format-broken candidates appear.
+                               # Env-overridable (PRISM_GEN_TEMP) — the
+                               # anti-collapse recipe pairs kl↑ with temp↓ (1.0).
     "gen_top_p": 0.95,
     "gen_max_new_tokens": 192,
 

@@ -258,7 +258,7 @@ PY
   $PY -m prism.rl.train \
     --sft-init-from "$SFT" $DATA_ARGS \
     --checkpoint-dir "$CKPT" --wandb-run-name "$RUN" \
-    --lr 2e-5 --n-candidates "$NCAND" --kl-estimator k3 --kl-coef 0.05 \
+    --lr 2e-5 --n-candidates "$NCAND" --kl-estimator k3 --kl-coef "${RL_KL_COEF:-0.05}" \
     --gen-max-new-tokens 144 --max-opt-steps "$STEPS" --eval-every "$EVAL" \
     $PRIO_ARG $RESUME_ARG
   echo "RL DONE → $CKPT"
