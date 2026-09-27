@@ -1,8 +1,6 @@
 # Training recipes
 
-Run these scripts from the repository root after the
-[training setup](../README.md#training). Each GRPO recipe reads `best.pt` from
-its corresponding SFT run; `PRISM_SFT_INIT_FROM` selects another SFT checkpoint.
+Every training run in the paper has a script in [`recipes/`](../recipes/). Run them from the repository root once you've finished the [training setup](../README.md#training). Each GRPO recipe starts from the `best.pt` of its matching SFT run; set `PRISM_SFT_INIT_FROM` to start from a different SFT checkpoint.
 
 | Target | SFT recipe | GRPO recipe | Hook layer | Projection width |
 |---|---|---|---:|---:|
@@ -10,10 +8,7 @@ its corresponding SFT run; `PRISM_SFT_INIT_FROM` selects another SFT checkpoint.
 | Gemma-2-9B-it | [sft_gemma2-9b.sh](../recipes/sft_gemma2-9b.sh) | [grpo_gemma2-9b.sh](../recipes/grpo_gemma2-9b.sh) | 21 | 3584 |
 | Ministral-3-8B | [sft_ministral3-8b.sh](../recipes/sft_ministral3-8b.sh) | [grpo_ministral3-8b.sh](../recipes/grpo_ministral3-8b.sh) | 17 | 4096 |
 
-All recipes use the same [training records](DATA_CARD.md), seed 42, and
-up to 128 response-token activations. LoRA uses rank 32, alpha 64, and dropout
-0.05 on the attention and MLP projection modules; Ministral restricts adapters
-to its language-model stack. The projection is trainable in both stages.
+All recipes train on the same [records](DATA_CARD.md) with seed 42 and read up to 128 response-token activations. LoRA uses rank 32, alpha 64, and dropout 0.05 on the attention and MLP projections; for Ministral, the adapters cover only its language-model stack. The projection is trained in both stages.
 
 ## Optimization
 
@@ -26,8 +21,7 @@ to its language-model stack. The projection is trainable in both stages.
 | Validation samples | 2,000 | 1,500 | 500 |
 | Checkpoint selection | Lowest validation loss | Lowest validation loss | Highest validation judge reward |
 
-Learning rates are rounded. Use the recipes and
-[shared recipe code](../recipes/_lib.sh) for exact settings and reproduction.
+The table rounds the learning rates. The recipes and the [shared recipe code](../recipes/_lib.sh) have the exact values.
 
 ## GRPO settings
 
@@ -43,6 +37,4 @@ Learning rates are rounded. Use the recipes and
 | Under-length penalty | 0.15 per bullet below 0.5 × ground-truth count |
 | Judge | `google/gemma-4-31B-it`, reasoning disabled |
 
-The released runs used cached activations. See the
-[pipeline guide](PIPELINE.md#activation-extraction) for on-the-fly extraction and
-cache reuse, and [training ablations](ABLATIONS.md) for layer and seed controls.
+The released runs used cached activations. The [pipeline guide](PIPELINE.md#activation-extraction) covers on-the-fly extraction and reusing a cache, and the [training ablations](ABLATIONS.md) cover the layer and seed experiments.

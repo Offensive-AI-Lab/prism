@@ -1,69 +1,48 @@
 # Training data
 
-PRISM's training prompts come from three datasets:
+PRISM's training prompts come from three public datasets:
 
-| Source key | Upstream dataset | Source license | PRISM records before filtering |
+| Source key | Upstream dataset | Source license | Records before filtering |
 |---|---|---|---:|
 | `if_eval` | [google/IFEval](https://huggingface.co/datasets/google/IFEval) | Apache-2.0 | 492 |
 | `if_multi_constraints` | [allenai/IF_multi_constraints_upto5](https://huggingface.co/datasets/allenai/IF_multi_constraints_upto5) | ODC-By-1.0 | 77,002 |
 | `ultrachat` | [HuggingFaceH4/ultrachat_200k](https://huggingface.co/datasets/HuggingFaceH4/ultrachat_200k) | MIT | 200,002 |
 
-The [training dataset](https://huggingface.co/datasets/Offensive-AI-Lab/prism-training-dataset)
-contains these 277,496 records and a validity mask selecting 203,589 for use.
-The Ai2 source also lists third-party model-output terms in its dataset card.
+The [training dataset](https://huggingface.co/datasets/Offensive-AI-Lab/prism-training-dataset) contains all 277,496 records, along with a validity mask that selects the 203,589 used for training and evaluation.
 
 ## Files and fields
 
-Download the records using
-[`scripts/download_dataset.py`](../scripts/download_dataset.py). It places
-`if_eval.jsonl`, `if_multi_constraints.jsonl`, and `ultrachat.jsonl` in
-`$PRISM_DATA_DIR/jsonl/`, with `valid_record_ids.json` beside that
-directory. The [training instructions](../README.md#1-prepare-the-data)
-show the download command.
+[`scripts/download_dataset.py`](../scripts/download_dataset.py) downloads the records, as shown in the [training instructions](../README.md#1-prepare-the-data). It puts `if_eval.jsonl`, `if_multi_constraints.jsonl`, and `ultrachat.jsonl` in `$PRISM_DATA_DIR/jsonl/`, and the mask, `valid_record_ids.json`, directly in `$PRISM_DATA_DIR`.
 
 Each record has these fields:
 
 | Field | Meaning |
 |---|---|
-| `id` | Stable record identifier used by the validity mask |
+| `id` | Stable record identifier, used by the validity mask |
 | `source_dataset` | Source key from the table above |
-| `prompt` | Instruction-rich user request |
-| `response` | Qwen3.5-9B's generated response to that request |
-| `instruction_set` | Generated instruction labels, stored as a bulleted text string |
-| `metadata` | Generation metadata, including `paraphrase_group_id` for related prompts |
+| `prompt` | The user request, rich in instructions |
+| `response` | Qwen3.5-9B's response to that request |
+| `instruction_set` | The reference instruction list, stored as a bulleted string |
+| `metadata` | Generation metadata, including a `paraphrase_group_id` that links related prompts |
 
-Qwen3.5-9B generates both responses and instruction labels. Labels are generated
-from the prompt alone at temperature 0.3, not inferred from the response or
-written by human annotators. The fixed request for an instruction list lives in
-code rather than in each record.
+Qwen3.5-9B wrote both the responses and the instruction lists. It generated each list from the prompt alone, at temperature 0.3, so the labels are neither inferred from the response nor written by people. The request used to generate them is fixed in the generation code rather than stored with each record.
 
-The same records are used for Qwen, Gemma, and Ministral training. Each target
-model reads the stored `prompt + response` to produce its own activations;
-the stored response is not regenerated for each target.
+Qwen, Gemma, and Ministral all train on these same records. Each target model reads the stored `prompt + response` to produce its own activations; the response isn't regenerated for each model.
 
 ## How training uses the records
 
-Both stages condition the PRISM decoder on response-token activations, not the
-original prompt text.
+In both stages, the PRISM decoder sees only response-token activations, never the prompt text.
 
 - **SFT:** `instruction_set` is the target sequence for the cross-entropy loss.
-- **GRPO:** PRISM generates candidate reports. The judge receives each report,
-  `prompt`, `response`, and `instruction_set` to calculate its reward.
+- **GRPO:** PRISM generates candidate reports, and the judge scores each one given the `prompt`, `response`, and `instruction_set`.
 
-Activation caching changes how the inputs are stored, not which fields supply
-the supervision. See the [pipeline guide](PIPELINE.md#activation-extraction).
+Caching activations changes how the inputs are stored, not which fields supervise training. See the [pipeline guide](PIPELINE.md#activation-extraction).
 
 ## Filtering and splits
 
-Rule-based checks reject empty or malformed labels, echoes of the label-generation
-request, and likely truncation. An LLM judge checks whether the labels faithfully
-enumerate the prompt's instructions. These are label-quality filters, not
-content-safety filters.
+Rule-based checks reject labels that are empty or malformed, that echo the label-generation request, or that look truncated. An LLM judge then checks whether the labels faithfully list the prompt's instructions. These filters are about label quality, not content safety.
 
-The loaders split the full records before applying the mask. They use sorted
-input files, seed 42, validation and test ratios of 0.1 each, and no source
-stratification. Records sharing `metadata.paraphrase_group_id` stay together.
-After masking, the splits contain:
+The loaders split the full set of records first and apply the mask afterward. They use sorted input files, seed 42, validation and test ratios of 0.1 each, and no stratification by source. Records that share a `metadata.paraphrase_group_id` always land in the same split. After masking, the splits contain:
 
 | Split | Records |
 |---|---:|
@@ -71,23 +50,17 @@ After masking, the splits contain:
 | Validation | 20,410 |
 | Test | 20,358 |
 
-Keep the full JSONLs and mask together: deleting rejected records before
-splitting would change membership. [`scripts/check_dataset.py`](../scripts/check_dataset.py)
-checks record counts, IDs, and the released split membership.
+Keep the full JSONL files and the mask together. Deleting rejected records before splitting would change which records end up in each split. [`scripts/check_dataset.py`](../scripts/check_dataset.py) verifies the record counts, IDs, and released split membership.
 
 ## Regeneration and limitations
 
-The [generation scripts](PIPELINE.md#generating-new-records) create a new sample;
-they do not reconstruct the released records exactly. Source sampling,
-paraphrase generation, and model-based filtering can change the resulting data.
+The [generation scripts](PIPELINE.md#generating-new-records) produce a new sample rather than an exact copy of the released records, since source sampling, paraphrasing, and model-based filtering can all change the result.
 
-The labels can contain Qwen3.5-9B's errors and omissions, and the validity mask
-filters all three splits.
+The labels can carry Qwen3.5-9B's errors and omissions. The validity mask applies to all three splits, so the test set went through the same filtering as the training data.
 
 ## License
 
-This is a multi-license dataset. The `prompt` field retains the terms of its
-source dataset:
+This dataset combines several licenses. Each `prompt` keeps the terms of its source dataset:
 
 | Source key | License |
 |---|---|
@@ -95,9 +68,4 @@ source dataset:
 | `if_multi_constraints` | ODC-By-1.0 |
 | `ultrachat` | MIT |
 
-The PRISM authors release the project-generated `response`, `instruction_set`,
-metadata, and validity mask under Apache-2.0 to the extent that they hold the
-applicable rights. This does not replace the source terms. In particular, the
-Ai2 source card notes that some records contain third-party model output subject
-to separate terms. Exact upstream revisions and transformations are recorded in
-the dataset's `source_inventory.json`.
+The PRISM authors release the generated `response`, `instruction_set`, metadata, and validity mask under Apache-2.0, to the extent that they hold the rights to them. This doesn't override the source terms. In particular, Ai2's dataset card notes that some of its records contain third-party model output with separate terms. The exact upstream revisions and transformations are recorded in the dataset's `source_inventory.json`.
