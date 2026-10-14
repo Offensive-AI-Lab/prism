@@ -506,3 +506,4 @@ td.best { font-weight: 700; color: #fff; }
 .hnum-n { margin-top: 4px; color: var(--text-muted); font-size: 13px; }
 .headline-foot { margin: 0; font-size: 13.5px; color: var(--text-muted); max-width: 70em; }
 @media (max-width: 560px) { .headline { padding: 20px 18px; } .hero-stat { align-items: flex-start; } }
+.headline-table { margin: 0 0 14px; background: rgba(0, 0, 0, 0.2); }

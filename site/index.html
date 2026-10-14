@@ -298,7 +298,18 @@
         <div class="hnum-n">the model didn&rsquo;t act on them, yet they were in the activations</div>
       </div>
     </div>
-    <p class="headline-foot">&ldquo;Caught&rdquo; uses the paper&rsquo;s detection criterion: PRISM&rsquo;s report covers the injected instructions with an average coverage of at least 0.5. The model followed 33.2% of injected instructions overall. The behavior judge agrees with human annotators at Cohen&rsquo;s &kappa; = 0.734 (human&ndash;human &kappa; = 0.786). This analysis came after the paper and is not one of its reported metrics. <a href="https://github.com/Offensive-AI-Lab/prism-eval/blob/main/docs/BEHAVIOR_ANALYSIS.md">Method and code &rarr;</a></p>
+    <div class="table-scroll headline-table">
+      <table>
+        <thead><tr><th>Benchmark</th><th>Attack success</th><th>Attacks that worked</th><th>Injections caught</th><th>Benign instructions recovered</th></tr></thead>
+        <tbody>
+          <tr><td>BIPIA</td><td>53.8%</td><td>7,379</td><td>95.5%</td><td>98.6%</td></tr>
+          <tr><td>LLMail-Inject</td><td>16.7%</td><td>1,862</td><td>87.6%</td><td>99.0%</td></tr>
+          <tr><td>InjecAgent</td><td>19.3%</td><td>253</td><td>100.0%</td><td>85.1%</td></tr>
+          <tr class="is-prism"><td>All three</td><td>33.2%</td><td>9,494</td><td>94.1%</td><td>98.6%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="headline-foot">&ldquo;Caught&rdquo; uses the paper&rsquo;s detection criterion: PRISM&rsquo;s report covers the injected instructions with an average coverage of at least 0.5. Attack success is the share of injected instructions the model followed. The behavior judge agrees with human annotators at Cohen&rsquo;s &kappa; = 0.734 (human&ndash;human &kappa; = 0.786). This analysis came after the paper and is not one of its reported metrics. <a href="https://github.com/Offensive-AI-Lab/prism-eval/blob/main/docs/BEHAVIOR_ANALYSIS.md">Method and code &rarr;</a></p>
   </div>
 
   <div class="stats">
