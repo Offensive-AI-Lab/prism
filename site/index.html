@@ -267,20 +267,14 @@
   </div>
 </section>
 
-<!-- ============ Results ============ -->
-<section id="results" class="wrap">
+<!-- ============ Latest result ============ -->
+<section id="headline" class="wrap">
   <div class="section-head">
-    <span class="eyebrow">Results</span>
-    <h2>Recovers far more, with few hallucinations</h2>
-    <p>We evaluate on 1,000 held-out examples in four settings never seen in training: ordinary requests, constraint-heavy prompts, hidden objectives, and indirect prompt injections in documents, emails, web pages, and tool outputs. The target model is Qwen3.5-9B.</p>
+    <span class="eyebrow">Latest result &middot; post-paper analysis</span>
+    <h2>Trained on ordinary chat. Tested on 24,953 public attacks it never saw.</h2>
+    <p>PRISM was trained only on everyday instruction-following data, with no prompt injections. We ran it on every attack in three public benchmarks (BIPIA, LLMail-Inject, and InjecAgent), then asked a separate, human-calibrated judge which instructions the model actually carried out in its response.</p>
   </div>
-
-  <div class="headline" id="headline">
-    <div class="headline-top">
-      <span class="pill pill--new">Latest result &middot; post-paper analysis</span>
-      <h3>Trained on ordinary chat. Tested on 24,953 public attacks it never saw.</h3>
-      <p>PRISM was trained only on everyday instruction-following data, with no prompt injections. We ran it on every attack in three public benchmarks (BIPIA, LLMail-Inject, and InjecAgent), then asked a separate, human-calibrated judge which instructions the model actually carried out in its response.</p>
-    </div>
+  <div class="headline">
     <div class="headline-nums">
       <div class="hnum hnum--inj">
         <div class="hnum-value">94.1%</div>
@@ -310,6 +304,15 @@
       </table>
     </div>
     <p class="headline-foot">&ldquo;Caught&rdquo; uses the paper&rsquo;s detection criterion: PRISM&rsquo;s report covers the injected instructions with an average coverage of at least 0.5. Attack success is the share of injected instructions the model followed. The behavior judge agrees with human annotators at Cohen&rsquo;s &kappa; = 0.734 (human&ndash;human &kappa; = 0.786). This analysis came after the paper and is not one of its reported metrics. <a href="https://github.com/Offensive-AI-Lab/prism-eval/blob/main/docs/BEHAVIOR_ANALYSIS.md">Method and code &rarr;</a></p>
+  </div>
+</section>
+
+<!-- ============ Results ============ -->
+<section id="results" class="wrap">
+  <div class="section-head">
+    <span class="eyebrow">Paper results</span>
+    <h2>Recovers far more, with few hallucinations</h2>
+    <p>The paper evaluates on 1,000 held-out examples in four settings never seen in training: ordinary requests, constraint-heavy prompts, hidden objectives, and indirect prompt injections in documents, emails, web pages, and tool outputs. The target model is Qwen3.5-9B.</p>
   </div>
 
   <div class="stats">
