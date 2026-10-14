@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRISM | Offensive AI Lab</title>
+<meta name="description" content="PRISM reads a language model's activations as it responds and writes out the instructions represented in them, including prompt injections and hidden objectives the user never sees. EMNLP 2026.">
+<meta property="og:title" content="PRISM: Recovering Instruction Sets from Language Model Activations">
+<meta property="og:description" content="Reading the instructions that steer an LLM, straight from its activations. EMNLP 2026 Main Conference.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="assets/prism-architecture.png">
+<meta name="theme-color" content="#181818">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2305070b'/%3E%3Cpath d='M16 5 27 26H5Z' fill='none' stroke='%2379b8ff' stroke-width='2.4' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="site-title" href="https://offensive-ai-lab.com/">Offensive AI Lab</a>
+    <nav class="site-nav" aria-label="Lab site">
+      <a href="https://offensive-ai-lab.com/about/">About</a>
+      <a class="active" href="https://offensive-ai-lab.com/research/">Research</a>
+      <a href="https://offensive-ai-lab.com/publications/">Publications</a>
+      <a href="https://offensive-ai-lab.com/members/">Members</a>
+      <a href="https://offensive-ai-lab.com/contact/">Contact</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<!-- ============ Hero ============ -->
+<div class="hero">
+  <div class="wrap">
+    <div>
+      <a class="crumb" href="https://offensive-ai-lab.com/research/">&larr; Research</a>
+      <div class="venues">
+        <a class="pill" href="https://arxiv.org/abs/2606.09563">EMNLP 2026 <em>Main Conference</em></a>
+        <span class="pill">Rank A*</span>
+      </div>
+      <h1>PRISM</h1>
+      <p class="fulltitle">Recovering Instruction Sets from Language Model Activations</p>
+      <p class="tagline">Reading the instructions that steer an LLM, straight from its activations, including prompt injections and hidden objectives the user never sees.</p>
+      <div class="actions">
+        <a class="btn btn--primary" href="https://arxiv.org/abs/2606.09563">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h6"/></svg>
+          Read the Paper
+        </a>
+        <a class="btn" href="https://github.com/Offensive-AI-Lab/prism">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/></svg>
+          Code
+        </a>
+        <a class="btn" href="https://huggingface.co/Offensive-AI-Lab/models">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.3 7 12 12l8.7-5M12 22V12"/></svg>
+          Checkpoints
+        </a>
+      </div>
+      <a class="hero-stat" href="#headline">
+        <span class="hero-stat-num">94.1%</span>
+        <span>of prompt injections the model acted on were caught, across 24,953 public attacks PRISM never saw in training</span>
+        <span aria-hidden="true">&rarr;</span>
+      </a>
+    </div>
+
+    <svg class="hero-art" viewBox="0 0 600 420" role="img" aria-labelledby="heroArtTitle">
+      <title id="heroArtTitle">Response activations pass through a prism and split into separate beams, one per recovered instruction.</title>
+      <defs>
+        <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6"/></filter>
+        <filter id="softer" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="14"/></filter>
+        <linearGradient id="prismFill" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#ffffff" stop-opacity="0.14"/>
+          <stop offset="1" stop-color="#79b8ff" stop-opacity="0.05"/>
+        </linearGradient>
+      </defs>
+
+      <!-- activation grid (cells added by main.js) -->
+      <g id="actGrid" transform="translate(14 78)"></g>
+      <text x="14" y="300" fill="#9a9a9a" font-size="12" font-family="ui-monospace, SF Mono, Menlo, monospace" letter-spacing="1">RESPONSE ACTIVATIONS</text>
+      <text x="14" y="317" fill="#6f6f6f" font-size="11" font-family="ui-monospace, SF Mono, Menlo, monospace">last 128 tokens · layer 16</text>
+
+      <!-- white beam in -->
+      <line x1="160" y1="172" x2="272" y2="210" stroke="#ffffff" stroke-opacity="0.25" stroke-width="16" stroke-linecap="round" filter="url(#soft)"/>
+      <line x1="160" y1="172" x2="272" y2="210" stroke="#ffffff" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round"/>
+      <line class="beam-in" x1="160" y1="172" x2="272" y2="210" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+
+      <!-- dispersion inside the prism -->
+      <polygon points="272,210 398,168 446,273" fill="#ffffff" fill-opacity="0.16"/>
+
+      <!-- outgoing beams -->
+      <g id="heroBeams" stroke-linecap="round">
+        <g stroke="#FF5A5F"><line x1="398" y1="168" x2="600" y2="64" stroke-width="22" stroke-opacity="0.16" filter="url(#soft)"/><line x1="398" y1="168" x2="600" y2="64" stroke-width="3"/><line class="beam-core" x1="398" y1="168" x2="600" y2="64" stroke="#fff" stroke-opacity="0.7" stroke-width="2"/></g>
+        <g stroke="#FF9F43"><line x1="408" y1="189" x2="600" y2="134" stroke-width="22" stroke-opacity="0.16" filter="url(#soft)"/><line x1="408" y1="189" x2="600" y2="134" stroke-width="3"/><line class="beam-core" x1="408" y1="189" x2="600" y2="134" stroke="#fff" stroke-opacity="0.7" stroke-width="2" style="animation-delay:-.2s"/></g>
+        <g stroke="#FFD23F"><line x1="417" y1="210" x2="600" y2="204" stroke-width="22" stroke-opacity="0.16" filter="url(#soft)"/><line x1="417" y1="210" x2="600" y2="204" stroke-width="3"/><line class="beam-core" x1="417" y1="210" x2="600" y2="204" stroke="#fff" stroke-opacity="0.7" stroke-width="2" style="animation-delay:-.4s"/></g>
+        <g stroke="#2ED3B7"><line x1="427" y1="231" x2="600" y2="274" stroke-width="22" stroke-opacity="0.16" filter="url(#soft)"/><line x1="427" y1="231" x2="600" y2="274" stroke-width="3"/><line class="beam-core" x1="427" y1="231" x2="600" y2="274" stroke="#fff" stroke-opacity="0.7" stroke-width="2" style="animation-delay:-.6s"/></g>
+        <g stroke="#4C9AFF"><line x1="436" y1="252" x2="600" y2="344" stroke-width="22" stroke-opacity="0.16" filter="url(#soft)"/><line x1="436" y1="252" x2="600" y2="344" stroke-width="3"/><line class="beam-core" x1="436" y1="252" x2="600" y2="344" stroke="#fff" stroke-opacity="0.7" stroke-width="2" style="animation-delay:-.8s"/></g>
+        <g stroke="#9D7BFF"><line x1="446" y1="273" x2="600" y2="414" stroke-width="22" stroke-opacity="0.16" filter="url(#soft)"/><line x1="446" y1="273" x2="600" y2="414" stroke-width="3"/><line class="beam-core" x1="446" y1="273" x2="600" y2="414" stroke="#fff" stroke-opacity="0.7" stroke-width="2" style="animation-delay:-1s"/></g>
+      </g>
+
+      <!-- prism -->
+      <polygon class="prism-glow" points="345,50 485,360 205,360" fill="none" stroke="#79b8ff" stroke-width="10" stroke-opacity="0.35" filter="url(#softer)"/>
+      <polygon points="345,50 485,360 205,360" fill="url(#prismFill)" stroke="#ffffff" stroke-opacity="0.9" stroke-width="3" stroke-linejoin="round"/>
+      <line x1="345" y1="50" x2="345" y2="360" stroke="#ffffff" stroke-opacity="0.08" stroke-width="2"/>
+      <text x="345" y="326" text-anchor="middle" fill="#ffffff" font-size="30" font-weight="700" letter-spacing="1.5" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif">PRISM</text>
+      <text x="345" y="346" text-anchor="middle" fill="#9a9a9a" font-size="11" font-family="ui-monospace, SF Mono, Menlo, monospace">frozen model + LoRA</text>
+    </svg>
+  </div>
+</div>
+
+<!-- ============ Authors ============ -->
+<div class="wrap meta">
+  <div class="meta-row">
+    <div class="meta-label">Authors</div>
+    <div class="authors">
+      <a href="https://offensive-ai-lab.com/gilad.gressel/">Gilad Gressel</a><sup>1,3</sup>,
+      <a href="https://offensive-ai-lab.com/rahul.pankajakshan/">Rahul Pankajakshan</a><sup>3</sup>,
+      Julia Diament<sup>2</sup>,
+      Efim Hudis<sup>2</sup>,
+      Krishnashree Achuthan<sup>1</sup>,
+      <a href="https://offensive-ai-lab.com/yisroel.mirsky/">Yisroel Mirsky</a><sup>3</sup>
+    </div>
+  </div>
+  <div class="meta-row">
+    <div class="meta-label">Affiliations</div>
+    <div class="affils">
+      <span><sup>1</sup> Center for Cybersecurity Systems &amp; Networks, Amrita Vishwa Vidyapeetham</span>
+      <span><sup>2</sup> Microsoft</span>
+      <span><sup>3</sup> Ben-Gurion University of the Negev</span>
+    </div>
+  </div>
+  <div class="meta-row">
+    <div class="meta-label">Topics</div>
+    <div class="venues"><span class="pill pill--plain">AI Safety</span><span class="pill pill--plain">AI Security</span><span class="pill pill--plain">Interpretability</span></div>
+  </div>
+</div>
+
+<!-- ============ Examples ============ -->
+<section id="examples" class="wrap">
+  <div class="section-head">
+    <span class="eyebrow">See it work</span>
+    <h2>The response looks fine. The activations don&rsquo;t.</h2>
+    <p>Each example is an excerpt from the paper&rsquo;s qualitative results. The target model is Qwen3.5-9B. PRISM never sees the prompt: it reads only the model&rsquo;s activations on the last 128 tokens of its answer, and writes out the instructions it finds there.</p>
+  </div>
+
+  <div class="tabs" role="tablist" aria-label="Examples" id="exampleTabs"></div>
+
+  <div id="examplePanel" role="tabpanel" tabindex="0">
+    <div class="explorer" id="explorer">
+      <svg class="explorer-beams" id="explorerBeams" aria-hidden="true"></svg>
+
+      <div class="explorer-left">
+        <div class="card">
+          <div class="card-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path d="M3 3l18 18"/></svg>
+            The model was given <span class="aside muted" style="text-transform:none;letter-spacing:0;font-weight:500">&middot; PRISM never sees this</span>
+          </div>
+          <div class="io-block" id="exGiven"></div>
+          <div class="note note--inj" id="exInjNote"></div>
+        </div>
+        <div class="card">
+          <div class="card-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            What the model wrote
+          </div>
+          <div class="io-block io-quote" id="exAnswer"></div>
+          <div class="note" id="exAnswerNote"></div>
+        </div>
+      </div>
+
+      <div class="explorer-mid" aria-hidden="true">
+        <svg class="mid-prism" id="midPrism" viewBox="0 0 120 120">
+          <line x1="0" y1="72" x2="38" y2="72" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-opacity="0.85"/>
+          <polygon points="60,18 98,100 22,100" fill="rgba(255,255,255,0.08)" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/>
+          <polygon points="38,72 76,56 82,78" fill="#fff" fill-opacity="0.18"/>
+        </svg>
+        <div class="mid-caption">PRISM reads the answer&rsquo;s activations</div>
+      </div>
+
+      <div class="explorer-right">
+        <div class="card">
+          <div class="score-strip">
+            <div class="card-label" style="margin:0">What PRISM recovered</div>
+            <div class="score-big" id="exScore"></div>
+          </div>
+          <ul class="recovered" id="exRecovered"></ul>
+          <div class="gt">
+            <div class="card-label">Ground-truth instructions <span class="aside muted" style="text-transform:none;letter-spacing:0;font-weight:500">&middot; <span class="key-inj"></span> hidden or injected</span></div>
+            <div class="chips" id="exGT"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="compare-head card-label">Same activations, three readers</div>
+    <div class="compare" id="exCompare" aria-label="Methods compared on this example"></div>
+  </div>
+</section>
+
+<!-- ============ Problem ============ -->
+<section id="problem" class="wrap">
+  <div class="section-head">
+    <span class="eyebrow">The problem</span>
+    <h2>The output doesn&rsquo;t show what&rsquo;s steering the model</h2>
+  </div>
+  <p class="lede">As LLMs act as agents, reading documents, calling tools, and making decisions on our behalf, monitoring them means knowing not just what they output, but which instructions are steering them. A model can infer subgoals nobody asked for, follow a prompt injection hidden in a web page or tool output, or carry a covert objective, while its output looks ordinary.</p>
+  <p>Activation-to-language methods such as LatentQA and Activation Oracles show that hidden states can be read out in natural language. They answer one question at a time, though, and real prompts carry many instructions at once: a task, constraints, prohibitions, a tone, and sometimes an injected directive. We define the task of recovering all of them.</p>
+
+  <div class="two-col" style="margin-top:18px">
+    <div class="defn">
+      <h3>Instruction set retrieval</h3>
+      <p>Given activations captured while a frozen model generates its response, produce a list of every instruction, constraint, prohibition, and subgoal represented in them. The prompt itself is never passed to the reader.</p>
+    </div>
+    <div class="defn">
+      <h3>Two scores, against a ground-truth list</h3>
+      <p><strong>Coverage</strong>: the fraction of real instructions recovered. <strong>Hallucination</strong>: the fraction of reported instructions that were never there. A good monitor maximizes the first and minimizes the second.</p>
+      <div class="formula" aria-label="Coverage and hallucination formulas">
+        <math display="block">
+          <mrow><mi>Cvg</mi><mo>=</mo><mfrac><mn>1</mn><mrow><mo stretchy="false">|</mo><mi>&#x2110;</mi><mo stretchy="false">|</mo></mrow></mfrac><munder><mo>&#x2211;</mo><mrow><mi>s</mi><mo>&#x2208;</mo><mi>&#x2110;</mi></mrow></munder><mi>&#x3bc;</mi><mo stretchy="false">(</mo><mi>s</mi><mo>;</mo><mover><mi>&#x2110;</mi><mo>^</mo></mover><mo stretchy="false">)</mo></mrow>
+        </math>
+        <math display="block">
+          <mrow><mi>Hall</mi><mo>=</mo><mfrac><mn>1</mn><mrow><mo stretchy="false">|</mo><mover><mi>&#x2110;</mi><mo>^</mo></mover><mo stretchy="false">|</mo></mrow></mfrac><munder><mo>&#x2211;</mo><mrow><mover><mi>s</mi><mo>^</mo></mover><mo>&#x2208;</mo><mover><mi>&#x2110;</mi><mo>^</mo></mover></mrow></munder><mo stretchy="false">(</mo><mn>1</mn><mo>&#x2212;</mo><mi>&#x3bc;</mi><mo stretchy="false">(</mo><mover><mi>s</mi><mo>^</mo></mover><mo>;</mo><mi>&#x2110;</mi><mo stretchy="false">)</mo><mo stretchy="false">)</mo></mrow>
+        </math>
+      </div>
+      <p class="small muted" style="margin:8px 0 0">&mu; is 1 when a calibrated LLM judge finds a semantic match. In practice the judge also gives partial credit (0.5), and a reported instruction only counts as a hallucination if nothing in the prompt, context, or response supports it.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Method ============ -->
+<section id="method" class="wrap">
+  <div class="section-head">
+    <span class="eyebrow">Method</span>
+    <h2>How PRISM works</h2>
+  </div>
+
+  <div class="flow" role="list">
+    <div class="flow-step is-frozen" role="listitem">Frozen target model<small>generates a response as usual</small></div>
+    <div class="flow-arrow" aria-hidden="true">&rarr;</div>
+    <div class="flow-step" role="listitem">Activation snapshot<small>layer-16 residual stream, last 128 response tokens</small></div>
+    <div class="flow-arrow" aria-hidden="true">&rarr;</div>
+    <div class="flow-step" role="listitem">Learned projection<small>maps activations into the model&rsquo;s embedding space as soft tokens</small></div>
+    <div class="flow-arrow" aria-hidden="true">&rarr;</div>
+    <div class="flow-step" role="listitem">Same model + LoRA<small>decodes a bullet list of instructions</small></div>
+  </div>
+
+  <p>PRISM reuses the target model&rsquo;s own frozen weights. The only new parameters are a linear projection and LoRA adapters, so the released Qwen checkpoints are about 266&nbsp;MB each and run alongside the model it monitors. It takes no probe question: the activations are its only input.</p>
+
+  <figure style="margin:18px 0 0">
+    <div class="figure"><img src="assets/prism-architecture.png" width="2268" height="756" loading="lazy" alt="Architecture diagram. Left: the frozen target model produces activations of the last T generated tokens at a middle layer. Center: PRISM projects them into soft tokens and decodes recovered instructions with LoRA on the same frozen model. Right: during training, N rollouts are scored by an LLM judge against the ground truth, and the rewards drive a GRPO update."></div>
+    <figcaption class="figcaption">Only the projection and the LoRA adapters are trained. During GRPO, a judge scores each of N candidate lists against the ground truth.</figcaption>
+  </figure>
+
+  <div class="stages">
+    <div class="stage">
+      <h3><span class="num">1</span>Supervised pretraining</h3>
+      <p>On about 280k prompts from UltraChat, IF-Multi-Constraints, and IFEval, PRISM learns to map activation snapshots to reference instruction lists with next-token cross-entropy.</p>
+      <p class="small muted">This produces fluent lists, but cross-entropy can&rsquo;t tell a paraphrase from a miss, and it doesn&rsquo;t punish made-up instructions.</p>
+    </div>
+    <div class="stage">
+      <h3><span class="num">2</span>Judge-guided GRPO</h3>
+      <p>PRISM samples several candidate lists per example. An LLM judge, calibrated against human annotators, scores every bullet, and GRPO pushes toward lists that recover more and invent less.</p>
+      <div class="formula" aria-label="Reward: coverage minus 0.4 times hallucination minus a length penalty">
+        <math display="block"><mrow><mi>r</mi><mo>=</mo><mi>Cvg</mi><mo>&#x2212;</mo><mn>0.4</mn><mo>&#x22c5;</mo><mi>Hall</mi><mo>&#x2212;</mo><msub><mi>P</mi><mtext>len</mtext></msub></mrow></math>
+      </div>
+      <p class="small muted" style="margin:8px 0 0">Missed instructions are weighted more heavily than invented ones, and a two-sided length penalty blocks padding and over-merging.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Results ============ -->
+<section id="results" class="wrap">
+  <div class="section-head">
+    <span class="eyebrow">Results</span>
+    <h2>Recovers far more, with few hallucinations</h2>
+    <p>We evaluate on 1,000 held-out examples in four settings never seen in training: ordinary requests, constraint-heavy prompts, hidden objectives, and indirect prompt injections in documents, emails, web pages, and tool outputs. The target model is Qwen3.5-9B.</p>
+  </div>
+
+  <div class="headline" id="headline">
+    <div class="headline-top">
+      <span class="pill pill--new">Latest result &middot; post-paper analysis</span>
+      <h3>Trained on ordinary chat. Tested on 24,953 public attacks it never saw.</h3>
+      <p>PRISM was trained only on everyday instruction-following data, with no prompt injections. We ran it on every attack in three public benchmarks (BIPIA, LLMail-Inject, and InjecAgent), then asked a separate, human-calibrated judge which instructions the model actually carried out in its response.</p>
+    </div>
+    <div class="headline-nums">
+      <div class="hnum hnum--inj">
+        <div class="hnum-value">94.1%</div>
+        <div class="hnum-label">of the injections the model acted on were caught</div>
+        <div class="hnum-n">9,494 cases where the attack worked</div>
+      </div>
+      <div class="hnum">
+        <div class="hnum-value">98.6%</div>
+        <div class="hnum-label">of the benign instructions the model carried out were recovered</div>
+        <div class="hnum-n">21,216 instructions</div>
+      </div>
+      <div class="hnum hnum--muted">
+        <div class="hnum-value">46.5%</div>
+        <div class="hnum-label">of the injections the model ignored were still fully recovered</div>
+        <div class="hnum-n">the model didn&rsquo;t act on them, yet they were in the activations</div>
+      </div>
+    </div>
+    <p class="headline-foot">&ldquo;Caught&rdquo; uses the paper&rsquo;s detection criterion: PRISM&rsquo;s report covers the injected instructions with an average coverage of at least 0.5. The model followed 33.2% of injected instructions overall. The behavior judge agrees with human annotators at Cohen&rsquo;s &kappa; = 0.734 (human&ndash;human &kappa; = 0.786). This analysis came after the paper and is not one of its reported metrics. <a href="https://github.com/Offensive-AI-Lab/prism-eval/blob/main/docs/BEHAVIOR_ANALYSIS.md">Method and code &rarr;</a></p>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-value">0.77<span class="vs">vs</span>0.54</div><div class="stat-label">average coverage, PRISM vs. the strongest activation-based baseline</div></div>
+    <div class="stat"><div class="stat-value">0.76<span class="vs">vs</span>0.45</div><div class="stat-label">coverage of the injected and hidden-objective instructions alone</div></div>
+    <div class="stat"><div class="stat-value">2.0%</div><div class="stat-label">average hallucination rate (4.8% on prompt injections)</div></div>
+    <div class="stat"><div class="stat-value">0.77</div><div class="stat-label">coverage on 24,953 public prompt injections, never trained on</div></div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-head">
+      <div>
+        <h3 class="chart-title">Coverage by setting</h3>
+        <p class="chart-sub">Fraction of ground-truth instructions recovered. All methods read Qwen3.5-9B activations.</p>
+      </div>
+      <ul class="legend" aria-label="Legend">
+        <li><i style="background:var(--s-latentqa)"></i>LatentQA</li>
+        <li><i style="background:var(--s-ao)"></i>Activation Oracles</li>
+        <li><i style="background:var(--s-prism)"></i>PRISM</li>
+      </ul>
+    </div>
+    <div class="chart" id="coverageChart" role="group" aria-label="Grouped bar chart of coverage. PRISM: Benign 0.977, Constraints 0.761, Hidden objectives 0.646, Prompt injection 0.685, Average 0.767. Activation Oracles: 0.898, 0.398, 0.417, 0.429, 0.536. LatentQA: 0.767, 0.311, 0.366, 0.325, 0.442."></div>
+    <div class="tooltip" id="chartTip" role="status"></div>
+
+    <details class="table-toggle">
+      <summary>Show the full table (reward, coverage, hallucination)</summary>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr class="group"><th></th><th colspan="3">Benign</th><th colspan="3">Constraints</th><th colspan="3">Hidden obj.</th><th colspan="3">Injection</th><th colspan="3">Average</th></tr>
+            <tr><th>Method</th><th>R</th><th>Cvg</th><th>H</th><th>R</th><th>Cvg</th><th>H</th><th>R</th><th>Cvg</th><th>H</th><th>R</th><th>Cvg</th><th>H</th><th>R</th><th>Cvg</th><th>H</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>GPT-5.5 (text only)</td><td>.396</td><td>.919</td><td>.000</td><td>.360</td><td>.444</td><td>.000</td><td>.316</td><td>.461</td><td>.000</td><td>.373</td><td>.536</td><td>.000</td><td>.361</td><td>.590</td><td>.000</td></tr>
+            <tr><td>LatentQA (Llama3-8B)</td><td>.805</td><td>.808</td><td>.008</td><td>.278</td><td>.279</td><td>.004</td><td>.277</td><td>.277</td><td>.000</td><td>.330</td><td>.333</td><td>.012</td><td>.423</td><td>.424</td><td>.006</td></tr>
+            <tr><td>Activation Oracles (Qwen3-8B)</td><td>.821</td><td>.832</td><td>.028</td><td>.362</td><td>.362</td><td>.000</td><td>.243</td><td>.243</td><td>.000</td><td>.342</td><td>.344</td><td>.004</td><td>.442</td><td>.445</td><td>.008</td></tr>
+            <tr><td>LatentQA (Qwen3.5-9B)</td><td>.761</td><td>.767</td><td>.016</td><td>.305</td><td>.311</td><td>.016</td><td>.366</td><td>.366</td><td>.000</td><td>.304</td><td>.325</td><td>.052</td><td>.434</td><td>.442</td><td>.021</td></tr>
+            <tr><td>Activation Oracles (Qwen3.5-9B)</td><td>.892</td><td>.898</td><td>.004</td><td>.396</td><td>.398</td><td>.004</td><td>.417</td><td>.417</td><td>.000</td><td>.423</td><td>.429</td><td>.015</td><td>.532</td><td>.536</td><td>.006</td></tr>
+            <tr><td>PRISM w/o RL (Qwen3.5-9B)</td><td>.964</td><td>.971</td><td>.002</td><td>.617</td><td>.661</td><td>.033</td><td>.563</td><td>.599</td><td>.028</td><td>.468</td><td>.531</td><td>.086</td><td>.653</td><td>.691</td><td>.037</td></tr>
+            <tr class="is-prism"><td>PRISM (Qwen3.5-9B)</td><td class="best">.967</td><td class="best">.977</td><td>.002</td><td class="best">.751</td><td class="best">.761</td><td>.022</td><td class="best">.641</td><td class="best">.646</td><td>.008</td><td class="best">.658</td><td class="best">.685</td><td>.048</td><td class="best">.754</td><td class="best">.767</td><td>.020</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small muted" style="margin:8px 0 0">R: judge reward. Cvg: coverage. H: hallucination rate. The text-only baseline sees the last 128 response tokens as text instead of activations. Table 1 of the paper.</p>
+    </details>
+  </div>
+
+  <div class="results-grid">
+    <div class="panel">
+      <h3>The instructions that matter for security</h3>
+      <p class="muted">Coverage of only the injected payload (AP) or the covert objective (HO). Recovering the benign task alone doesn&rsquo;t catch an attack.</p>
+      <div id="advBars"></div>
+    </div>
+    <div class="panel">
+      <h3>Public prompt-injection benchmarks</h3>
+      <p class="muted">Three independent benchmarks PRISM was never trained on, with the same checkpoint and judge.</p>
+      <div class="table-scroll" style="margin-top:10px">
+        <table>
+          <thead><tr><th>Benchmark</th><th>n</th><th>Reward</th><th>Coverage</th><th>Halluc.</th></tr></thead>
+          <tbody>
+            <tr><td>BIPIA</td><td>13,901</td><td>.746</td><td>.781</td><td>.035</td></tr>
+            <tr><td>LLMail-Inject</td><td>9,998</td><td>.744</td><td>.772</td><td>.047</td></tr>
+            <tr><td>InjecAgent</td><td>1,054</td><td>.656</td><td>.667</td><td>.026</td></tr>
+            <tr class="is-prism"><td>Overall</td><td>24,953</td><td>.742</td><td>.772</td><td>.040</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="two-col" style="margin-top:16px">
+    <div class="defn">
+      <h3>Stable and portable</h3>
+      <p>Across four GRPO training seeds, average coverage is 0.767&nbsp;&plusmn;&nbsp;0.004. The same recipe transfers to Gemma-2-9B (0.709 coverage) and Ministral-3-8B (0.617).</p>
+    </div>
+    <div class="defn">
+      <h3>Where the signal comes from</h3>
+      <p>Blocking the response tokens from attending to the prompt, with the response held fixed, leaves 0.538 coverage (0.930 on benign requests), so much of the signal is carried by the response itself. The drop is larger on constraints, hidden objectives, and injections, which need not appear explicitly in the answer. PRISM draws on both sources.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Get started ============ -->
+<section id="code" class="wrap">
+  <div class="section-head">
+    <span class="eyebrow">Code &amp; data</span>
+    <h2>Run it yourself</h2>
+    <p>The demo runs Qwen3.5-9B with PRISM on one CUDA GPU with 24&nbsp;GB of memory. Type a prompt, generate a response, then recover the instructions from its activations, with LatentQA and Activation Oracles side by side.</p>
+  </div>
+
+  <div class="run">
+    <div>
+      <div class="code">
+        <button class="copy" type="button" data-copy="demoCmd">Copy</button>
+<pre id="demoCmd">git clone https://github.com/Offensive-AI-Lab/prism.git
+cd prism
+uv sync --extra demo
+uv run python demo/app.py</pre>
+      </div>
+      <p class="small muted">The first launch downloads Qwen3.5-9B (about 18&nbsp;GB) and the PRISM checkpoints. Training and evaluation instructions are in the <a href="https://github.com/Offensive-AI-Lab/prism#training">README</a> and <a href="https://github.com/Offensive-AI-Lab/prism-eval#quick-start">prism-eval</a>.</p>
+    </div>
+    <a class="shot" href="assets/demo.jpg"><img src="assets/demo.jpg" width="1600" height="1042" loading="lazy" alt="The PRISM demo with three panels: the target model&rsquo;s response to a hidden-objective prompt, the response tokens PRISM reads, and the recovered instructions."></a>
+  </div>
+
+  <div class="resources">
+    <a class="res" href="https://github.com/Offensive-AI-Lab/prism">
+      <div class="res-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/></svg>prism</div>
+      <span>The demo, the SFT and GRPO trainers, and one recipe per training run in the paper.</span>
+      <span class="res-go">github.com/Offensive-AI-Lab/prism &rarr;</span>
+    </a>
+    <a class="res" href="https://github.com/Offensive-AI-Lab/prism-eval">
+      <div class="res-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>prism-eval</div>
+      <span>The 1,000-record benchmark, the calibrated judge prompts, and scripts to reproduce every number.</span>
+      <span class="res-go">github.com/Offensive-AI-Lab/prism-eval &rarr;</span>
+    </a>
+    <a class="res" href="https://arxiv.org/abs/2606.09563">
+      <div class="res-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>Paper</div>
+      <span>Full method, ablations, judge calibration, and more qualitative examples.</span>
+      <span class="res-go">arXiv:2606.09563 &rarr;</span>
+    </a>
+    <a class="res" href="https://huggingface.co/Offensive-AI-Lab/prism-qwen3.5-9b-grpo">
+      <div class="res-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>PRISM checkpoint</div>
+      <span>The main Qwen3.5-9B model. Gemma-2-9B, Ministral-3-8B, and SFT-only checkpoints are also released.</span>
+      <span class="res-go">Hugging Face &rarr;</span>
+    </a>
+    <a class="res" href="https://huggingface.co/datasets/Offensive-AI-Lab/prism-training-dataset">
+      <div class="res-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>Training dataset</div>
+      <span>Prompts, responses, and reference instruction lists for both training stages.</span>
+      <span class="res-go">Hugging Face &rarr;</span>
+    </a>
+    <a class="res" href="https://huggingface.co/Offensive-AI-Lab/models">
+      <div class="res-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg>Baseline adapters</div>
+      <span>The exact LatentQA and Activation Oracles adapters for Qwen3.5-9B used in our comparisons.</span>
+      <span class="res-go">All models &rarr;</span>
+    </a>
+  </div>
+</section>
+
+<!-- ============ Limitations ============ -->
+<section id="limits" class="wrap wrap--narrow" style="max-width:var(--wide)">
+  <div class="section-head">
+    <span class="eyebrow">Scope</span>
+    <h2>Limitations and responsible use</h2>
+  </div>
+  <ul class="limits">
+    <li>We evaluate 8&ndash;9B instruction-tuned models from three families. Larger models and long agent trajectories are future work.</li>
+    <li>Ground truth lists what the prompt instructed, not what the model chose to follow. The post-paper behavior analysis is a first step toward the instructions that actually drove the response.</li>
+    <li>PRISM is a monitor, not a defense. Recovering an injected instruction does not decide whether to block it, and a miss or a hallucination can mislead. Treat its output as an audit signal for human review.</li>
+    <li>Reading instructions from activations can expose system prompts or private task context. Activation traces should be handled as sensitive data, with consent.</li>
+  </ul>
+</section>
+
+<!-- ============ Cite ============ -->
+<section id="cite" class="wrap cite">
+  <div class="section-head">
+    <h2>Cite this work</h2>
+  </div>
+  <div class="code">
+    <button class="copy" type="button" data-copy="bibtex">Copy</button>
+<pre id="bibtex">@inproceedings{gressel2026prism,
+  title     = {PRISM: Recovering Instruction Sets from Language Model Activations},
+  author    = {Gressel, Gilad and Pankajakshan, Rahul and Diament, Julia and
+               Hudis, Efim and Achuthan, Krishnashree and Mirsky, Yisroel},
+  booktitle = {Proceedings of the 2026 Conference on Empirical Methods in
+               Natural Language Processing},
+  year      = {2026},
+  url       = {https://arxiv.org/abs/2606.09563}
+}</pre>
+  </div>
+</section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="logos">
+      <a class="logo-tile" href="https://offensive-ai-lab.com/"><img src="assets/logos/oai-lab.png" alt="Offensive AI Lab" width="388" height="340"></a>
+      <span class="logo-tile"><img src="assets/logos/bgu.png" alt="Ben-Gurion University of the Negev" width="778" height="508"></span>
+      <span class="logo-tile"><img src="assets/logos/amrita.svg" alt="Amrita Vishwa Vidyapeetham" width="245" height="63"></span>
+      <span class="logo-tile logo-tile--dark"><img src="assets/logos/microsoft.png" alt="Microsoft" width="1412" height="301"></span>
+    </div>
+    <div class="footer-cols">
+      <p class="muted" style="margin:0">This work was supported by funding from the Microsoft Security CTO. We thank Amrutha Prakash and Aditya Rajiv for their contributions to data annotation.</p>
+      <div class="footer-links">
+        <a href="https://offensive-ai-lab.com/research/">More research</a>
+        <a href="https://github.com/Offensive-AI-Lab">GitHub</a>
+        <a href="mailto:gilad.gressel@am.amrita.edu">gilad.gressel@am.amrita.edu</a>
+        <a href="mailto:yisroel@bgu.ac.il">yisroel@bgu.ac.il</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="main.js"></script>
+</body>
+</html>
